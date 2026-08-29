@@ -1,0 +1,46 @@
+# Virtual Environments
+.venv/
+backend/.venv/
+env/
+venv/
+ENV/
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Storage and temporary databases
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+backend/storage/results/*
+!backend/storage/results/.gitkeep
+backend/storage/history.db
+
+# Environment Files
+.env
+backend/.env
+frontend/.env
+*.local
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
