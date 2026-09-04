@@ -1,4 +1,3 @@
-from typing import Optional
 import cv2
 import numpy as np
 from app.retina.optic_disc import StructureFinding

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Activity, History, Home, Sparkles, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Eye, Activity, History, Home, Sparkles } from 'lucide-react';
 import { HealthStatus } from '../types/prediction';
 
 interface NavbarProps {

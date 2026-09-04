@@ -45,7 +45,6 @@ export const LoadingState: React.FC = () => {
         {STAGES.map((stage, idx) => {
           const isPast = idx < currentStage;
           const isCurrent = idx === currentStage;
-          const isFuture = idx > currentStage;
 
           return (
             <div

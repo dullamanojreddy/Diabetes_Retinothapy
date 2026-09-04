@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.services.report_service import report_service
 from app.services.history_service import history_service
-from app.core.logging_config import logger
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 

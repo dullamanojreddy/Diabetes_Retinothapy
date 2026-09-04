@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, XCircle, Sparkles, Sliders, Eye, Sun, Camera, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Sparkles, Sliders, Eye, Sun, Camera, ShieldCheck } from 'lucide-react';
 import { QualityInfo } from '../types/prediction';
 
 interface QualityAssessmentCardProps {

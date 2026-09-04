@@ -1,10 +1,8 @@
 import html
 from datetime import datetime
 from typing import Dict, Any, Optional
-from pathlib import Path
 
 from app.core.config import settings
-from app.core.logging_config import logger
 from app.services.history_service import history_service
 
 class ReportService:

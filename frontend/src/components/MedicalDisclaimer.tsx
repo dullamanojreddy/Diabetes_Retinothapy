@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Info, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
 
 interface MedicalDisclaimerProps {
   compact?: boolean;

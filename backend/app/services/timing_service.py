@@ -1,5 +1,5 @@
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from contextlib import contextmanager
 
 class PipelineTimer:

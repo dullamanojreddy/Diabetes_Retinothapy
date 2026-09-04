@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, ShieldAlert, Sparkles, Activity } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { ImageUploader } from '../components/ImageUploader';
 import { ImagePreview } from '../components/ImagePreview';
 import { LoadingState } from '../components/LoadingState';

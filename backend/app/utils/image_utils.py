@@ -1,13 +1,12 @@
 from dataclasses import dataclass, field
 import io
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional
 from PIL import Image
 import numpy as np
 import cv2
 
 from app.core.config import settings
-from app.core.logging_config import logger
 
 @dataclass
 class FundusValidationSignals:

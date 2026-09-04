@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Form, status, Request
+from fastapi import APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from app.services.prediction_service import prediction_service
 

@@ -1,15 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { Home } from './pages/Home';
 import { Screening } from './pages/Screening';
 import { History } from './pages/History';
 import { usePrediction } from './hooks/usePrediction';
-import { Eye, Shield, Heart, Github } from 'lucide-react';
+import { Eye } from 'lucide-react';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<'home' | 'screening' | 'history'>('home');
   const {
-    screeningState,
     selectedFile,
     previewUrl,
     isLoading,

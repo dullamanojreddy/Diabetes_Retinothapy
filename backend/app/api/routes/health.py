@@ -1,11 +1,10 @@
-import os
 from datetime import datetime
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.ml.model import model_manager
-from app.schemas.prediction import HealthResponse, ReadinessResponse
+from app.schemas.prediction import HealthResponse
 
 router = APIRouter(tags=["Health"])
 

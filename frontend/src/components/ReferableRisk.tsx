@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertOctagon, CheckCircle2, ArrowUpRight, Activity, Info } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, Activity } from 'lucide-react';
 import { ReferableRiskInfo } from '../types/prediction';
 import { formatPercent } from '../utils/formatting';
 

@@ -1,4 +1,3 @@
-from typing import List
 from fastapi import APIRouter, HTTPException, status, Query
 from app.services.history_service import history_service
 from app.schemas.prediction import HistoryListResponse, HistoryItem

@@ -3,15 +3,10 @@ import {
   Eye,
   Activity,
   Sparkles,
-  ShieldCheck,
   ArrowRight,
   CheckCircle2,
-  Cpu,
-  Layers,
   ChevronRight,
-  Database,
-  BarChart2,
-  FileCheck
+  Database
 } from 'lucide-react';
 import { MedicalDisclaimer } from '../components/MedicalDisclaimer';
 

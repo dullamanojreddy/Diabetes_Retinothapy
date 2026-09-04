@@ -1,7 +1,7 @@
 import React from 'react';
-import { FileText, Printer, Clock, Cpu, CheckCircle2, ShieldCheck, Check } from 'lucide-react';
+import { FileText, Printer, Clock, Check } from 'lucide-react';
 import { PredictionResponse } from '../types/prediction';
-import { formatDate, formatPercent, getSeverityStyle } from '../utils/formatting';
+import { formatPercent, getSeverityStyle } from '../utils/formatting';
 
 interface ScreeningSummaryProps {
   result: PredictionResponse;

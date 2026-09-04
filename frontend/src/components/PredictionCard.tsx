@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Sparkles, HelpCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { PredictionClassInfo } from '../types/prediction';
 import { getSeverityStyle, formatPercent } from '../utils/formatting';
 

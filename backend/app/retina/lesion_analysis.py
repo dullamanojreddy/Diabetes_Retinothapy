@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional
 import numpy as np
 
-from app.retina.optic_disc import StructureFinding
 from app.retina.retinal_analysis import RetinalStructureResult
 from app.retina.microaneurysms import CandidateFinding, detect_microaneurysms
 from app.retina.exudates import detect_exudates

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Trash2, ArrowRight, FileText, CheckCircle2 } from 'lucide-react';
+import { Eye, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { formatFileSize } from '../utils/formatting';
 
 interface ImagePreviewProps {

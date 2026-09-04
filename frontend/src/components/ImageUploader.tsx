@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, Image as ImageIcon, Sparkles, AlertCircle, FileCheck } from 'lucide-react';
-import { formatFileSize } from '../utils/formatting';
+import { UploadCloud, Sparkles, AlertCircle } from 'lucide-react';
 
 interface ImageUploaderProps {
   onFileSelected: (file: File) => void;

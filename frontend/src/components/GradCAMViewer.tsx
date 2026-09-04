@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, Eye, Sparkles, Sliders, Info, Maximize2, Download } from 'lucide-react';
+import { Sparkles, Info } from 'lucide-react';
 import { ExplainabilityInfo } from '../types/prediction';
 
 interface GradCAMViewerProps {
@@ -14,7 +14,6 @@ export const GradCAMViewer: React.FC<GradCAMViewerProps> = ({
   classNameTitle,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overlay');
-  const [overlayAlpha, setOverlayAlpha] = useState<number>(0.45);
 
   return (
     <div className="glass-panel rounded-2xl p-6 sm:p-7 border border-surface-700/80 shadow-2xl">
