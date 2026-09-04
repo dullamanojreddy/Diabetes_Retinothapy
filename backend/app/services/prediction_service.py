@@ -13,6 +13,7 @@ from app.ml.inference import run_inference
 from app.ml.gradcam import GradCAM
 from app.ml.explainability import generate_explanation
 from app.ml.enhancement import fundus_enhancer
+from app.retina import analyze_retinal_structure, analyze_lesions
 import numpy as np
 from app.services.history_service import history_service
 from app.services.quality_service import quality_service
@@ -293,6 +294,28 @@ class PredictionService:
                 confidence=confidence
             )
 
+            # Phase 5: Retinal Structure Analysis (optic disc, fovea, vessels)
+            try:
+                structures_result, vessel_mask, skeleton_mask = analyze_retinal_structure(img_np)
+                structures_dict = structures_result.to_dict()
+            except Exception as e:
+                logger.warning(f"Retinal structure analysis error: {e}")
+                structures_dict = {"status": "UNAVAILABLE", "error": str(e)}
+                vessel_mask, skeleton_mask = None, None
+
+            # Phase 6: Lesion Candidate Analysis (microaneurysms, exudates, hemorrhages, neovascularization)
+            try:
+                lesions_result = analyze_lesions(
+                    img_np,
+                    structures=structures_result if 'structures_result' in locals() else None,
+                    vessel_mask=vessel_mask,
+                    skeleton_mask=skeleton_mask
+                )
+                lesions_dict = lesions_result.to_dict()
+            except Exception as e:
+                logger.warning(f"Lesion candidate analysis error: {e}")
+                lesions_dict = {"research_only": True, "status": "UNAVAILABLE", "error": str(e)}
+
             elapsed_ms = round((time.time() - start_time) * 1000, 2)
             timestamp_now = datetime.utcnow().isoformat()
 
@@ -339,6 +362,8 @@ class PredictionService:
                     heatmap_url=heatmap_url,
                     original_url=original_url
                 ),
+                structures=structures_dict,
+                lesions=lesions_dict,
                 model=ModelMetadata(
                     name="EfficientNet-B3",
                     version=settings.MODEL_VERSION
@@ -380,7 +405,9 @@ class PredictionService:
                 },
                 "heatmap_url": heatmap_url,
                 "overlay_url": overlay_url,
-                "original_url": original_url
+                "original_url": original_url,
+                "structures": structures_dict,
+                "lesions": lesions_dict
             })
 
             return status.HTTP_200_OK, response.model_dump(mode="json")

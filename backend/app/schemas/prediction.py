@@ -72,6 +72,8 @@ class PredictionResponse(BaseModel):
     referable: Optional[ReferableRiskInfo] = None
     quality: QualityInfo
     explainability: Optional[ExplainabilityInfo] = None
+    structures: Optional[Dict[str, Any]] = Field(None, description="Retinal anatomical landmark analysis (optic disc, fovea, vessels)")
+    lesions: Optional[Dict[str, Any]] = Field(None, description="Research-only lesion candidate evidence (microaneurysms, exudates, hemorrhages, neovascularization)")
     model: ModelMetadata = Field(default_factory=ModelMetadata)
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     
