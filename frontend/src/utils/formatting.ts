@@ -10,7 +10,7 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
-export function getSeverityStyle(classId: number): {
+export function getSeverityStyle(classId?: number | null): {
   bg: string;
   text: string;
   border: string;

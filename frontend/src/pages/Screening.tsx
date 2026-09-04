@@ -8,11 +8,14 @@ import { Results } from './Results';
 import { MedicalDisclaimer } from '../components/MedicalDisclaimer';
 import { PredictionResponse } from '../types/prediction';
 
+import { RejectionDetail } from '../hooks/usePrediction';
+
 interface ScreeningProps {
   selectedFile: File | null;
   previewUrl: string | null;
   isLoading: boolean;
   error: string | null;
+  rejection?: RejectionDetail | null;
   result: PredictionResponse | null;
   onFileSelected: (file: File) => void;
   onRemoveFile: () => void;
@@ -25,6 +28,7 @@ export const Screening: React.FC<ScreeningProps> = ({
   previewUrl,
   isLoading,
   error,
+  rejection,
   result,
   onFileSelected,
   onRemoveFile,
@@ -55,8 +59,14 @@ export const Screening: React.FC<ScreeningProps> = ({
       <div className="max-w-4xl mx-auto">
         {isLoading ? (
           <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} onRetry={onRunAnalysis} />
+        ) : error || rejection ? (
+          <ErrorState
+            status={rejection?.status || 'API_ERROR'}
+            message={rejection?.message || error || 'Screening could not be completed.'}
+            reasons={rejection?.reasons || []}
+            screeningId={rejection?.screeningId}
+            onRetry={onReset}
+          />
         ) : selectedFile && previewUrl ? (
           <ImagePreview
             file={selectedFile}

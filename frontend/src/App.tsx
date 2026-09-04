@@ -9,10 +9,12 @@ import { Eye, Shield, Heart, Github } from 'lucide-react';
 export function App() {
   const [currentTab, setCurrentTab] = useState<'home' | 'screening' | 'history'>('home');
   const {
+    screeningState,
     selectedFile,
     previewUrl,
     isLoading,
     error,
+    rejection,
     result,
     health,
     selectFile,
@@ -50,6 +52,7 @@ export function App() {
             previewUrl={previewUrl}
             isLoading={isLoading}
             error={error}
+            rejection={rejection}
             result={result}
             onFileSelected={selectFile}
             onRemoveFile={clearFile}

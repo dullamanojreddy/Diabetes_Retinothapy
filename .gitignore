@@ -30,6 +30,8 @@ backend/storage/uploads/*
 backend/storage/results/*
 !backend/storage/results/.gitkeep
 backend/storage/history.db
+backend/storage/history.json
+*.tmp
 
 # Environment Files
 .env

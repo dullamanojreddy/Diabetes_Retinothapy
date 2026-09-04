@@ -14,6 +14,12 @@ interface ResultsProps {
 }
 
 export const Results: React.FC<ResultsProps> = ({ result, onAnalyzeAnother }) => {
+  const prediction = result.diagnosis || result.prediction;
+  const referable = result.referable;
+  const probabilities = result.probabilities || {};
+  const explainability = result.explainability;
+  const filename = result.filename || 'retinal_image.jpg';
+
   return (
     <div className="space-y-8 py-6">
       {/* Top Header & Actions */}
@@ -30,7 +36,7 @@ export const Results: React.FC<ResultsProps> = ({ result, onAnalyzeAnother }) =>
             AI Screening Analysis Dashboard
           </h1>
           <p className="text-xs sm:text-sm text-surface-400 mt-0.5">
-            Retinal fundus image evaluation: <span className="font-mono text-surface-200 font-semibold">{result.filename}</span>
+            Retinal fundus image evaluation: <span className="font-mono text-surface-200 font-semibold">{filename}</span>
           </p>
         </div>
 
@@ -44,28 +50,34 @@ export const Results: React.FC<ResultsProps> = ({ result, onAnalyzeAnother }) =>
       </div>
 
       {/* Primary 2-Column Prediction Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PredictionCard
-          prediction={result.prediction}
-          explanationText={result.explanation_text}
-        />
-        <ReferableRisk
-          referable={result.referable}
-          recommendationText={result.referral_recommendation}
-        />
-      </div>
+      {prediction && referable && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <PredictionCard
+            prediction={prediction}
+            explanationText={result.explanation_text || 'AI screening complete.'}
+          />
+          <ReferableRisk
+            referable={referable}
+            recommendationText={result.referral_recommendation || 'Follow-up as advised.'}
+          />
+        </div>
+      )}
 
       {/* Probability Distribution */}
-      <ProbabilityChart
-        probabilities={result.probabilities}
-        predictedClassId={result.prediction.class_id}
-      />
+      {prediction && (
+        <ProbabilityChart
+          probabilities={probabilities}
+          predictedClassId={prediction.class_id}
+        />
+      )}
 
       {/* Grad-CAM Visual Explainability Viewer */}
-      <GradCAMViewer
-        explainability={result.explainability}
-        classNameTitle={result.prediction.class_name}
-      />
+      {explainability && prediction && (
+        <GradCAMViewer
+          explainability={explainability}
+          classNameTitle={prediction.label || prediction.class_name || `Class ${prediction.class_id}`}
+        />
+      )}
 
       {/* Audit Summary Card */}
       <ScreeningSummary result={result} />

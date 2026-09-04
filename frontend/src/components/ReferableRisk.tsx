@@ -12,7 +12,7 @@ export const ReferableRisk: React.FC<ReferableRiskProps> = ({
   referable,
   recommendationText,
 }) => {
-  const isReferable = referable.is_referable;
+  const isReferable = referable.status === 'REFERABLE' || referable.is_referable || (referable.probability >= referable.threshold);
 
   return (
     <div className={`rounded-2xl p-6 sm:p-7 border ${

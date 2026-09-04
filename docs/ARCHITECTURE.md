@@ -2,79 +2,123 @@
 
 ## High-Level Architecture Overview
 
-The Explainable DR Screening platform is structured into two decoupled tiers communicating over REST APIs:
+The system is structured as a decoupled two-tier client-server application adhering strictly to the SIH-Oriented Implementation Blueprint:
 
-1. **Frontend Layer**: A React 18 single-page application built with TypeScript, Vite, and Tailwind CSS.
-2. **Backend ML & API Layer**: A FastAPI asynchronous service integrating PyTorch, Torchvision, OpenCV, and SQLite for persistence.
+1. **Frontend Layer**: React 18 single-page application built with TypeScript, Vite, and Tailwind CSS.
+2. **Backend API & Gating Layer**: FastAPI asynchronous microservice orchestrating file validation, multi-signal fundus validation, technical quality checks, EfficientNet-B3 inference, Grad-CAM generation, and JSON history logging.
 
-```
+```text
                     ┌─────────────────────────┐
                     │    Web Browser Client   │
                     │ (React / TS / Tailwind) │
                     └────────────┬────────────┘
                                  │
-                                 │ HTTP POST /api/predict (multipart)
-                                 │ HTTP GET  /api/health
+                                 │ HTTP POST /api/prediction (multipart)
+                                 │ HTTP GET  /api/health & /ready
                                  │ HTTP GET  /api/history
                                  │
                                  ▼
                     ┌─────────────────────────┐
                     │     FastAPI Gateway     │
-                    │ (Lifespan / CORS / Auth)│
+                    │ (Lifespan / CORS / Rts) │
                     └────────────┬────────────┘
                                  │
-          ┌──────────────────────┼──────────────────────┐
-          │                      │                      │
-          ▼                      ▼                      ▼
-  ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-  │ Preprocessing │      │ Model Manager │      │   Grad-CAM    │
-  │ (Retina Crop  │      │(EfficientNet) │      │ (features[-1] │
-  │  & Normalise) │      │  Checkpoint   │      │  Activation)  │
-  └───────┬───────┘      └───────┬───────┘      └───────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
                                  ▼
                     ┌─────────────────────────┐
-                    │    Prediction Service   │
-                    │   • 5-Class Softmax     │
-                    │   • Referable Risk      │
-                    │   • Clinical Rationale  │
+                    │     FILE VALIDATION     │
+                    │  Size / Extension / MIME│
                     └────────────┬────────────┘
                                  │
-                     ┌───────────┴───────────┐
-                     ▼                       ▼
-           ┌───────────────────┐   ┌───────────────────┐
-           │   SQLite Audit    │   │  Static Artifacts │
-           │   (history.db)    │   │ (Heatmap/Overlay) │
-           └───────────────────┘   └───────────────────┘
+                                 ▼
+                    ┌─────────────────────────┐
+                    │    IMAGE VALIDATION     │
+                    │   Pillow Decode / RGB   │
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │    FUNDUS IMAGE GATE    │
+                    │ Multi-Signal Retinal CV │
+                    └────────────┬────────────┘
+                                 │ Pass
+                                 ▼
+                    ┌─────────────────────────┐
+                    │   QUALITY ASSESSMENT    │
+                    │  Blur / Exposure/ Range │
+                    └────────────┬────────────┘
+                                 │ Pass (ACCEPT)
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  EXISTING PREPROCESSING │
+                    │   preprocess_fundus()   │
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │     EfficientNet-B3     │
+                    │   best...epoch7.pth     │
+                    └────────────┬────────────┘
+                                 │
+                       ┌─────────┴─────────┐
+                       ▼                   ▼
+                5-Class Softmax       Referable DR
+                  Prediction        Threshold (0.13)
+                       │                   │
+                       └─────────┬─────────┘
+                                 │
+                                 ▼
+                          ┌─────────────┐
+                          │  Grad-CAM   │
+                          │ features[-1]│
+                          └──────┬──────┘
+                                 │
+                                 ▼
+                          ┌─────────────┐
+                          │History Store│
+                          │history.json │
+                          └──────┬──────┘
+                                 │
+                                 ▼
+                         Structured Response
+                                 │
+                                 ▼
+                          React Results UI
 ```
+
+---
 
 ## Component Breakdown
 
-### 1. Model Manager (`app/ml/model.py`)
-- Implements the Singleton pattern.
-- Instantiates the exact EfficientNet-B3 network with custom 5-class linear output head.
-- Loads state dict weights strictly from `backend/models/best_efficientnet_b3.pth`.
-- Selects CUDA acceleration if available, fallback to CPU.
-- Exposes `model.features[-1]` as the target feature extraction layer for Grad-CAM.
+### 1. Pre-Inference Safety & Validation Gates
+- **`app/utils/file_utils.py`**:
+  - Enforces extension allow-list (`.jpg`, `.jpeg`, `.png`), MIME type, and maximum upload size (10MB).
+  - Sanitizes filenames against path traversal.
+  - Creates unique temporary files with guaranteed deletion in `finally` blocks.
+- **`app/utils/image_utils.py`**:
+  - Safely decodes image bytes with Pillow.
+  - Multi-signal deterministic fundus gate: checks retinal color dominance ($R > G > B$, low blue absorption), dark peripheral borders around circular FOV aperture, and vascular gradient texture to intercept non-retinal images (cartoons, Sun, documents, random photos).
+  - Calculates technical quality metrics: dimensions, brightness, contrast, blur score.
 
-### 2. Preprocessing Pipeline (`app/ml/preprocessing.py`)
-- **`crop_retina(image_np)`**: Automatic boundary detection and dark border removal.
-- **`preprocess_fundus(image_input)`**: Standardizes image to $380 \times 380$ dimensions with ImageNet channel normalization.
+### 2. Model Manager (`app/ml/model.py`)
+- Singleton pattern initializing `EfficientNet-B3` checkpoint (`best_efficientnet_b3.pth`) once on application startup.
+- Centralized GPU/CPU device selection.
+- Sets model to evaluation mode (`model.eval()`).
+- Exposes `model.features[-1]` for Grad-CAM explainability.
 
-### 3. Grad-CAM Engine (`app/ml/gradcam.py`)
-- Hooks into `model.features[-1]` forward activations and backward gradients.
-- Calculates channel weights via Global Average Pooling:
-  $$\alpha_k^c = \frac{1}{Z} \sum_i \sum_j \frac{\partial y^c}{\partial A_{i,j}^k}$$
-- Generates Class Activation Map:
-  $$L_{\text{Grad-CAM}}^c = \text{ReLU}\left(\sum_k \alpha_k^c A^k\right)$$
-- Colorizes using OpenCV JET colormap and computes alpha blended overlay with original fundus.
+### 3. Preprocessing Pipeline (`app/ml/preprocessing.py`)
+- Preserved working pipeline:
+  - `crop_retina()`: Removes black empty borders to center the retinal FOV.
+  - `preprocess_fundus()`: Resizes to $380 \times 380$ using area interpolation, normalizes using ImageNet mean ($\mu=[0.485, 0.456, 0.406]$) and standard deviation ($\sigma=[0.229, 0.224, 0.225]$), and outputs a model-ready float tensor.
 
-### 4. Prediction Service (`app/services/prediction_service.py`)
-- Orchestrates the full lifecycle: validation $\rightarrow$ preprocessing $\rightarrow$ inference $\rightarrow$ Grad-CAM $\rightarrow$ clinical explanation text generation $\rightarrow$ database logging.
-- Formats responses into validated Pydantic schemas.
+### 4. Grad-CAM Engine (`app/ml/gradcam.py`)
+- Hooks into `model.features[-1]` to capture activations and backward gradients without modifying model weights.
+- Generates Class Activation Maps for the predicted or requested DR grade.
+- Synthesizes transparent colored heatmaps and alpha-blended overlays.
 
-### 5. Storage Layer (`backend/storage/`)
-- `uploads/`: Sanitized incoming uploads.
-- `results/`: Processed original images, heatmaps, and overlays.
-- `history.db`: SQLite database for screening audit records.
+### 5. Prediction Service (`app/services/prediction_service.py`)
+- Single orchestration point: file validation $\rightarrow$ fundus gate $\rightarrow$ quality checks $\rightarrow$ preprocessing $\rightarrow$ inference $\rightarrow$ referable logic $\rightarrow$ Grad-CAM $\rightarrow$ history logging $\rightarrow$ cleanup.
+- Implements fail-closed behavior: returns HTTP 400 for bad files and HTTP 422 for non-retinal or low-quality images without disease prediction.
+
+### 6. Persistence (`app/services/history_service.py`)
+- Thread-safe, atomic JSON history storage in `backend/storage/history.json`.
+- Stores metadata, results, and references to artifacts in `backend/storage/results/`.

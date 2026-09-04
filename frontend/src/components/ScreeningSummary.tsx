@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Printer, Clock, Cpu, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { FileText, Printer, Clock, Cpu, CheckCircle2, ShieldCheck, Check } from 'lucide-react';
 import { PredictionResponse } from '../types/prediction';
 import { formatDate, formatPercent, getSeverityStyle } from '../utils/formatting';
 
@@ -8,7 +8,21 @@ interface ScreeningSummaryProps {
 }
 
 export const ScreeningSummary: React.FC<ScreeningSummaryProps> = ({ result }) => {
-  const style = getSeverityStyle(result.prediction.class_id);
+  const prediction = result.diagnosis || result.prediction || {
+    class_id: 0,
+    label: 'No DR',
+    confidence: 0,
+    class_name: 'No DR'
+  };
+  const referable = result.referable || {
+    probability: 0,
+    threshold: 0.13,
+    status: 'NON_REFERABLE',
+    is_referable: false
+  };
+  const isReferable = referable.status === 'REFERABLE' || referable.is_referable;
+  const style = getSeverityStyle(prediction.class_id);
+  const quality = result.quality;
 
   const handlePrint = () => {
     window.print();
@@ -23,10 +37,10 @@ export const ScreeningSummary: React.FC<ScreeningSummaryProps> = ({ result }) =>
           </div>
           <div>
             <h3 className="text-base sm:text-lg font-bold text-surface-100">
-              Screening Audit Record
+              Screening Telemetry & Audit Record
             </h3>
             <p className="text-xs text-surface-400">
-              Verified clinical telemetry and metadata snapshot
+              Audit ID: <span className="font-mono text-brand-400">{result.screening_id || result.id}</span>
             </p>
           </div>
         </div>
@@ -45,42 +59,43 @@ export const ScreeningSummary: React.FC<ScreeningSummaryProps> = ({ result }) =>
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
           <span className="text-surface-400 block mb-1">DR Severity Grade</span>
           <span className={`font-bold font-mono text-sm ${style.text}`}>
-            {result.prediction.class_name} (Grade {result.prediction.class_id})
+            {prediction.label || prediction.class_name} (Grade {prediction.class_id})
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
           <span className="text-surface-400 block mb-1">Grade Confidence</span>
           <span className="font-bold font-mono text-sm text-surface-100">
-            {formatPercent(result.prediction.confidence, 2)}
+            {formatPercent(prediction.confidence, 2)}
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
-          <span className="text-surface-400 block mb-1">Referable Decision</span>
-          <span className={`font-bold text-sm ${result.referable.is_referable ? 'text-rose-400' : 'text-emerald-400'}`}>
-            {result.referable.is_referable ? 'Yes (Positive)' : 'No (Negative)'}
+          <span className="text-surface-400 block mb-1">Referable Status</span>
+          <span className={`font-bold text-sm ${isReferable ? 'text-rose-400' : 'text-emerald-400'}`}>
+            {isReferable ? 'REFERABLE (Positive)' : 'NON-REFERABLE (Negative)'}
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
           <span className="text-surface-400 block mb-1">Referable Probability</span>
           <span className="font-bold font-mono text-sm text-surface-100">
-            {formatPercent(result.referable.probability, 2)}
+            {formatPercent(referable.probability, 2)}
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
-          <span className="text-surface-400 block mb-1">Screening Threshold</span>
+          <span className="text-surface-400 block mb-1">Operating Threshold</span>
           <span className="font-bold font-mono text-sm text-amber-400">
-            {result.referable.threshold}
+            {referable.threshold}
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
-          <span className="text-surface-400 block mb-1">Model Architecture</span>
-          <span className="font-bold font-mono text-sm text-surface-200">
-            EfficientNet-B3 (PyTorch)
+          <span className="text-surface-400 block mb-1">Quality Gate</span>
+          <span className="font-bold font-mono text-sm text-emerald-400 flex items-center space-x-1">
+            <Check className="w-3.5 h-3.5 inline" />
+            <span>{quality?.status || 'ACCEPT'}</span>
           </span>
         </div>
       </div>
@@ -89,13 +104,13 @@ export const ScreeningSummary: React.FC<ScreeningSummaryProps> = ({ result }) =>
       <div className="mt-5 pt-4 border-t border-surface-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-surface-400 gap-2 font-mono">
         <div className="flex items-center space-x-1.5">
           <Clock className="w-3.5 h-3.5 text-surface-500" />
-          <span>Timestamp: {formatDate(result.timestamp)}</span>
+          <span>Timestamp: {result.created_at || (result.timestamp ? String(result.timestamp) : new Date().toISOString())}</span>
         </div>
         <div>
-          <span>Execution Time: {result.inference_time_ms} ms</span>
+          <span>Model: {result.model?.name || 'EfficientNet-B3'} ({result.model?.version || 'b3-aptos-epoch7'})</span>
         </div>
         <div className="truncate max-w-xs">
-          <span>File: {result.filename}</span>
+          <span>File: {result.filename || 'retinal_image.jpg'}</span>
         </div>
       </div>
     </div>

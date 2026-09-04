@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { History as HistoryIcon, RefreshCw, Eye, Calendar, AlertOctagon, CheckCircle2, ChevronRight, X } from 'lucide-react';
-import { HistoryItem, PredictionResponse } from '../types/prediction';
+import { History as HistoryIcon, RefreshCw, Eye, Calendar, AlertOctagon, CheckCircle2, X, ShieldAlert, CameraOff } from 'lucide-react';
+import { HistoryItem } from '../types/prediction';
 import { fetchHistory } from '../services/api';
 import { formatDate, formatPercent, getSeverityStyle } from '../utils/formatting';
-import { Results } from './Results';
 
-interface HistoryProps {
-  onSelectRecord?: (record: PredictionResponse) => void;
-}
-
-export const History: React.FC<HistoryProps> = () => {
+export const History: React.FC = () => {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +40,7 @@ export const History: React.FC<HistoryProps> = () => {
             Screening History Log
           </h1>
           <p className="text-xs sm:text-sm text-surface-400 mt-0.5">
-            Historical diabetic retinopathy screening results and Grad-CAM visualizations.
+            Audit history of completed screenings, quality gate outcomes, and explainability artifacts.
           </p>
         </div>
 
@@ -63,7 +58,7 @@ export const History: React.FC<HistoryProps> = () => {
       {isLoading ? (
         <div className="glass-panel rounded-2xl p-12 text-center text-surface-400 text-sm">
           <RefreshCw className="w-6 h-6 animate-spin mx-auto text-brand-400 mb-2" />
-          <span>Loading past screening records...</span>
+          <span>Loading screening records...</span>
         </div>
       ) : error ? (
         <div className="glass-panel rounded-2xl p-8 text-center text-rose-300 text-sm border-rose-500/30">
@@ -92,30 +87,37 @@ export const History: React.FC<HistoryProps> = () => {
               <thead>
                 <tr className="bg-surface-900/80 border-b border-surface-800 text-surface-400 uppercase text-[11px] font-mono">
                   <th className="py-3.5 px-4 font-semibold">Image & Timestamp</th>
-                  <th className="py-3.5 px-4 font-semibold">DR Severity Grade</th>
+                  <th className="py-3.5 px-4 font-semibold">Outcome / Grade</th>
                   <th className="py-3.5 px-4 font-semibold">Confidence</th>
                   <th className="py-3.5 px-4 font-semibold">Referable Risk</th>
-                  <th className="py-3.5 px-4 font-semibold">Grad-CAM Overlay</th>
+                  <th className="py-3.5 px-4 font-semibold">Visual Artifact</th>
                   <th className="py-3.5 px-4 font-semibold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-800/60 font-sans">
                 {historyItems.map((item) => {
+                  const isValid = item.status === 'VALID';
                   const style = getSeverityStyle(item.predicted_class);
                   return (
                     <tr
-                      key={item.id}
+                      key={item.screening_id || item.id}
                       className="hover:bg-surface-900/40 transition-colors group cursor-pointer"
                       onClick={() => setSelectedRecord(item)}
                     >
                       {/* Image & Timestamp */}
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-3">
-                          <img
-                            src={item.original_url}
-                            alt="Fundus thumb"
-                            className="w-10 h-10 rounded-lg object-cover bg-black border border-surface-800 shrink-0"
-                          />
+                          {item.original_url ? (
+                            <img
+                              src={item.original_url}
+                              alt="Fundus thumb"
+                              className="w-10 h-10 rounded-lg object-cover bg-black border border-surface-800 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-surface-900 border border-surface-800 flex items-center justify-center shrink-0 text-surface-500">
+                              {item.status === 'INVALID_IMAGE' ? <ShieldAlert className="w-5 h-5 text-amber-400" /> : <CameraOff className="w-5 h-5 text-orange-400" />}
+                            </div>
+                          )}
                           <div>
                             <span className="font-semibold text-surface-200 block truncate max-w-[160px] sm:max-w-xs" title={item.filename}>
                               {item.filename}
@@ -128,42 +130,62 @@ export const History: React.FC<HistoryProps> = () => {
                         </div>
                       </td>
 
-                      {/* Severity Grade */}
+                      {/* Outcome / Grade */}
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${style.badge}`}>
-                          <span>Grade {item.predicted_class}: {item.predicted_class_name}</span>
-                        </span>
+                        {isValid ? (
+                          <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${style.badge}`}>
+                            <span>Grade {item.predicted_class}: {item.predicted_class_name}</span>
+                          </span>
+                        ) : item.status === 'INVALID_IMAGE' ? (
+                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <ShieldAlert className="w-3 h-3" />
+                            <span>Rejected (Non-Retinal)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                            <CameraOff className="w-3 h-3" />
+                            <span>Rejected (Low Quality)</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Confidence */}
                       <td className="py-3 px-4 font-mono font-semibold text-surface-200">
-                        {formatPercent(item.confidence, 1)}
+                        {isValid && item.confidence !== undefined ? formatPercent(item.confidence, 1) : '—'}
                       </td>
 
                       {/* Referable Risk */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center space-x-1.5">
-                          {item.is_referable ? (
-                            <span className="text-rose-400 font-semibold flex items-center space-x-1">
-                              <AlertOctagon className="w-3.5 h-3.5" />
-                              <span>Referable ({formatPercent(item.referable_probability, 1)})</span>
-                            </span>
-                          ) : (
-                            <span className="text-emerald-400 font-semibold flex items-center space-x-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Non-referable</span>
-                            </span>
-                          )}
-                        </div>
+                        {isValid ? (
+                          <div className="flex items-center space-x-1.5">
+                            {item.is_referable ? (
+                              <span className="text-rose-400 font-semibold flex items-center space-x-1">
+                                <AlertOctagon className="w-3.5 h-3.5" />
+                                <span>Referable ({formatPercent(item.referable_probability || 0, 1)})</span>
+                              </span>
+                            ) : (
+                              <span className="text-emerald-400 font-semibold flex items-center space-x-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Non-referable</span>
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-surface-500 font-mono">No prediction</span>
+                        )}
                       </td>
 
                       {/* Overlay Thumbnail */}
                       <td className="py-3 px-4">
-                        <img
-                          src={item.overlay_url}
-                          alt="Grad-CAM Overlay thumbnail"
-                          className="w-10 h-10 rounded-lg object-cover bg-black border border-brand-500/30"
-                        />
+                        {item.overlay_url ? (
+                          <img
+                            src={item.overlay_url}
+                            alt="Grad-CAM Overlay thumbnail"
+                            className="w-10 h-10 rounded-lg object-cover bg-black border border-brand-500/30"
+                          />
+                        ) : (
+                          <span className="text-surface-500 font-mono text-[11px]">N/A</span>
+                        )}
                       </td>
 
                       {/* Action */}
@@ -195,7 +217,7 @@ export const History: React.FC<HistoryProps> = () => {
             <div className="flex items-center justify-between pb-4 border-b border-surface-800">
               <div>
                 <span className="text-xs font-mono text-brand-400 font-semibold uppercase">
-                  Audit Record Detail
+                  Audit Record: {selectedRecord.status}
                 </span>
                 <h3 className="text-xl font-bold text-surface-100 mt-0.5">
                   {selectedRecord.filename}
@@ -210,49 +232,63 @@ export const History: React.FC<HistoryProps> = () => {
             </div>
 
             {/* Images Visual Comparison */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 text-center">
-                <span className="text-xs text-surface-400 font-semibold">Original Fundus</span>
-                <img
-                  src={selectedRecord.original_url}
-                  alt="Original"
-                  className="w-full aspect-square rounded-xl object-contain bg-black border border-surface-800"
-                />
+            {selectedRecord.original_url && selectedRecord.overlay_url ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 text-center">
+                  <span className="text-xs text-surface-400 font-semibold">Preprocessed Fundus</span>
+                  <img
+                    src={selectedRecord.original_url}
+                    alt="Original"
+                    className="w-full aspect-square rounded-xl object-contain bg-black border border-surface-800"
+                  />
+                </div>
+                <div className="space-y-1.5 text-center">
+                  <span className="text-xs text-brand-400 font-semibold">Grad-CAM Overlay</span>
+                  <img
+                    src={selectedRecord.overlay_url}
+                    alt="Grad-CAM Overlay"
+                    className="w-full aspect-square rounded-xl object-contain bg-black border border-brand-500/30"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5 text-center">
-                <span className="text-xs text-brand-400 font-semibold">Grad-CAM Overlay</span>
-                <img
-                  src={selectedRecord.overlay_url}
-                  alt="Grad-CAM Overlay"
-                  className="w-full aspect-square rounded-xl object-contain bg-black border border-brand-500/30"
-                />
+            ) : (
+              <div className="p-4 rounded-xl bg-surface-950 border border-surface-800 text-center text-xs text-surface-400">
+                <span>Visual explainability not generated for non-prediction/rejected outcomes.</span>
               </div>
-            </div>
+            )}
 
             {/* Detail Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-surface-950/80 border border-surface-800">
-                <span className="text-surface-400 block">Predicted Grade</span>
-                <span className="font-bold text-surface-100 text-sm mt-0.5 block">
-                  Grade {selectedRecord.predicted_class}: {selectedRecord.predicted_class_name}
-                </span>
+            {selectedRecord.status === 'VALID' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-surface-950/80 border border-surface-800">
+                  <span className="text-surface-400 block">Predicted Grade</span>
+                  <span className="font-bold text-surface-100 text-sm mt-0.5 block">
+                    Grade {selectedRecord.predicted_class}: {selectedRecord.predicted_class_name}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-surface-950/80 border border-surface-800">
+                  <span className="text-surface-400 block">Confidence</span>
+                  <span className="font-bold font-mono text-surface-100 text-sm mt-0.5 block">
+                    {formatPercent(selectedRecord.confidence || 0, 1)}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-surface-950/80 border border-surface-800">
+                  <span className="text-surface-400 block">Referable Decision</span>
+                  <span className={`font-bold text-sm mt-0.5 block ${selectedRecord.is_referable ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {selectedRecord.is_referable ? 'Referable (Positive)' : 'Non-Referable'}
+                  </span>
+                </div>
               </div>
-              <div className="p-3 rounded-xl bg-surface-950/80 border border-surface-800">
-                <span className="text-surface-400 block">Confidence</span>
-                <span className="font-bold font-mono text-surface-100 text-sm mt-0.5 block">
-                  {formatPercent(selectedRecord.confidence, 1)}
-                </span>
+            ) : (
+              <div className="p-4 rounded-xl bg-surface-950/80 border border-surface-800 text-xs text-surface-300">
+                <span className="font-semibold text-amber-400 block mb-1">Rejection Details:</span>
+                <span>The image was intercepted by the pre-inference safety gate ({selectedRecord.status}) and safely excluded from model classification.</span>
               </div>
-              <div className="p-3 rounded-xl bg-surface-950/80 border border-surface-800">
-                <span className="text-surface-400 block">Referable Decision</span>
-                <span className={`font-bold text-sm mt-0.5 block ${selectedRecord.is_referable ? 'text-rose-400' : 'text-emerald-400'}`}>
-                  {selectedRecord.is_referable ? 'Referable (Positive)' : 'Non-Referable'}
-                </span>
-              </div>
-            </div>
+            )}
 
-            <div className="text-[11px] text-surface-400 font-mono">
-              Recorded at: {formatDate(selectedRecord.timestamp)}
+            <div className="text-[11px] text-surface-400 font-mono flex items-center justify-between">
+              <span>Audit ID: {selectedRecord.screening_id || selectedRecord.id}</span>
+              <span>Recorded: {formatDate(selectedRecord.timestamp)}</span>
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   explanationText,
 }) => {
   const style = getSeverityStyle(prediction.class_id);
+  const displayName = prediction.label || prediction.class_name || `Class ${prediction.class_id}`;
 
   return (
     <div className={`rounded-2xl p-6 sm:p-7 border ${style.border} ${style.bg} ${style.glow} shadow-2xl backdrop-blur-md relative overflow-hidden transition-all duration-300`}>
@@ -27,7 +28,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
             <span className="font-mono">Grade {prediction.class_id} of 4</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 tracking-tight">
-            {prediction.class_name}
+            {displayName}
           </h2>
         </div>
 

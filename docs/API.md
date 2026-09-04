@@ -2,17 +2,17 @@
 
 ## Base URL
 - Development: `http://localhost:8000/api`
-- OpenAPI Interactive Documentation: `http://localhost:8000/docs`
+- Interactive OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
 
 ## Endpoints
 
-### 1. Health Check
+### 1. Health Liveness Probe
 `GET /api/health`
 
 #### Description
-Returns system operational status, model initialization state, and computation device.
+Returns process liveness, model initialization state, and computation device.
 
 #### Response (200 OK)
 ```json
@@ -22,88 +22,174 @@ Returns system operational status, model initialization state, and computation d
   "model": "EfficientNet-B3",
   "device": "cpu",
   "version": "1.0.0",
-  "timestamp": "2026-08-29T21:46:00.000Z"
+  "timestamp": "2026-09-04T11:00:00.000Z"
 }
 ```
 
 ---
 
-### 2. Predict Retinopathy
-`POST /api/predict`
+### 2. Health Readiness Probe
+`GET /api/health/ready`
 
 #### Description
-Accepts an uploaded retinal fundus image, runs preprocessing, executes EfficientNet-B3 inference, calculates referable risk, and generates Grad-CAM explainability artifacts.
+Verifies that the EfficientNet-B3 model checkpoint is loaded in memory and storage directories are writable. Fails closed with `503 Service Unavailable` if unready.
+
+#### Response (200 OK - Ready)
+```json
+{
+  "status": "ready",
+  "model_loaded": true,
+  "model_version": "b3-aptos-epoch7",
+  "storage_available": true,
+  "timestamp": "2026-09-04T11:00:00.000Z"
+}
+```
+
+#### Response (503 Service Unavailable - Not Ready)
+```json
+{
+  "status": "not_ready",
+  "model_loaded": false,
+  "model_version": "b3-aptos-epoch7",
+  "storage_available": false,
+  "timestamp": "2026-09-04T11:00:00.000Z"
+}
+```
+
+---
+
+### 3. Screen Fundus Image
+`POST /api/prediction` (Alias: `POST /api/predict`)
+
+#### Description
+Uploads a digital retinal fundus photograph and executes the full screening workflow:
+1. File security & MIME validation
+2. Multi-signal fundus validation gate
+3. Technical image quality assessment
+4. Preprocessing (circular FOV crop + 380x380 resize + normalization)
+5. EfficientNet-B3 model inference
+6. Calibrated referable DR threshold evaluation (0.13)
+7. Grad-CAM visual attention heatmap generation
+8. JSON history index logging
 
 #### Request Format
 - Content-Type: `multipart/form-data`
 - Fields:
-  - `file`: (Required) Retinal image binary (`.png`, `.jpg`, `.jpeg`, `.webp`, max 10MB).
-  - `target_class`: (Optional) Integer `0-4` to override Grad-CAM explanation focus.
+  - `file`: (Required) Retinal image binary (`.jpg`, `.jpeg`, `.png`, max 10MB).
+  - `target_class`: (Optional) Integer `0-4` to focus Grad-CAM on a specific DR grade.
 
-#### Example Response (200 OK)
+#### Response (200 OK - Valid Screening)
 ```json
 {
-  "success": true,
-  "id": "e7c4f342-6e21-4f12-9c38-89f5c2b0129a",
-  "timestamp": "2026-08-29T21:46:31.250Z",
-  "filename": "fundus_scan_01.jpg",
-  "prediction": {
+  "screening_id": "85fda77c-d0ad-4611-88d5-5e8252cd0cfb",
+  "status": "VALID",
+  "diagnosis": {
     "class_id": 4,
-    "class_name": "Proliferative DR",
+    "label": "Proliferative DR",
     "confidence": 0.6990
   },
-  "referable": {
-    "is_referable": true,
-    "probability": 0.9984,
-    "threshold": 0.13
-  },
   "probabilities": {
-    "No DR": 0.0016,
-    "Mild DR": 0.0021,
-    "Moderate DR": 0.0098,
-    "Severe DR": 0.2875,
-    "Proliferative DR": 0.6990
+    "no_dr": 0.0016,
+    "mild_dr": 0.0021,
+    "moderate_dr": 0.0098,
+    "severe_dr": 0.2875,
+    "proliferative_dr": 0.6990
+  },
+  "referable": {
+    "probability": 0.9984,
+    "threshold": 0.13,
+    "status": "REFERABLE"
+  },
+  "quality": {
+    "status": "ACCEPT",
+    "reasons": []
   },
   "explainability": {
-    "gradcam_available": true,
-    "heatmap_url": "/storage/results/heatmap_e7c4f342.jpg",
-    "overlay_url": "/storage/results/overlay_e7c4f342.jpg",
-    "original_url": "/storage/results/original_e7c4f342.jpg"
+    "available": true,
+    "overlay_url": "/results/overlay_85fda77c.jpg",
+    "heatmap_url": "/results/heatmap_85fda77c.jpg",
+    "original_url": "/results/original_85fda77c.jpg"
   },
-  "explanation_text": "AI screening indicates features associated with proliferative diabetic retinopathy (such as neovascularization or preretinal/vitreous hemorrhage patterns).",
-  "referral_recommendation": "Screening recommendation: Referable DR detected. Follow-up clinical evaluation by an ophthalmologist or certified eye-care professional is recommended in accordance with standard diabetic eye screening protocols.",
-  "inference_time_ms": 142.5,
-  "disclaimer": "This AI system is intended for research and screening support only. It is not a medical diagnosis and should not replace examination or advice from a qualified eye-care professional."
+  "model": {
+    "name": "EfficientNet-B3",
+    "version": "b3-aptos-epoch7"
+  },
+  "created_at": "2026-09-04T11:00:00.000Z"
 }
 ```
 
-#### Error Responses
-- `400 Bad Request`: Invalid file format, empty upload, or non-image content.
-- `500 Internal Server Error`: Preprocessing or inference failure.
+#### Rejection Response (422 Unprocessable Content - Non-Retinal Image)
+```json
+{
+  "screening_id": "3b1239c4-954f-4d92-b34e-0a5814bfb229",
+  "status": "INVALID_IMAGE",
+  "quality": {
+    "status": "INVALID",
+    "reasons": [
+      "Image does not exhibit retinal fundus characteristics (FOV circularity, retinal color profile, or vascular structure)."
+    ],
+    "width": 400,
+    "height": 400,
+    "brightness": 120.5,
+    "contrast": 35.2,
+    "blur_score": 450.0
+  },
+  "created_at": "2026-09-04T11:00:00.000Z"
+}
+```
+
+#### Rejection Response (422 Unprocessable Content - Low Quality Fundus)
+```json
+{
+  "screening_id": "2c901e12-421b-419b-a012-70b134dae103",
+  "status": "LOW_QUALITY",
+  "quality": {
+    "status": "LOW_QUALITY",
+    "reasons": [
+      "Image is excessively blurry or out of focus (blur score: 4.2 < 8.0)."
+    ],
+    "width": 512,
+    "height": 512,
+    "brightness": 85.0,
+    "contrast": 18.0,
+    "blur_score": 4.2
+  },
+  "created_at": "2026-09-04T11:00:00.000Z"
+}
+```
+
+#### Error Response (400 Bad Request - Invalid File)
+```json
+{
+  "detail": "Unsupported file format '.pdf'. Allowed formats: .jpg, .jpeg, .png"
+}
+```
 
 ---
 
-### 3. History List
+### 4. History List
 `GET /api/history?limit=50`
+
+#### Description
+Returns paginated history records from `storage/history.json`, including both valid predictions and gate rejection outcomes.
 
 #### Response (200 OK)
 ```json
 {
-  "total": 1,
+  "total": 12,
   "items": [
     {
-      "id": "e7c4f342-6e21-4f12-9c38-89f5c2b0129a",
-      "timestamp": "2026-08-29T21:46:31.250Z",
+      "screening_id": "85fda77c-d0ad-4611-88d5-5e8252cd0cfb",
+      "timestamp": "2026-09-04T11:00:00.000Z",
       "filename": "fundus_scan_01.jpg",
+      "status": "VALID",
       "predicted_class": 4,
       "predicted_class_name": "Proliferative DR",
       "confidence": 0.6990,
       "referable_probability": 0.9984,
       "is_referable": true,
       "probabilities": { ... },
-      "heatmap_url": "/storage/results/heatmap_e7c4f342.jpg",
-      "overlay_url": "/storage/results/overlay_e7c4f342.jpg",
-      "original_url": "/storage/results/original_e7c4f342.jpg"
+      "overlay_url": "/results/overlay_85fda77c.jpg"
     }
   ]
 }
@@ -111,9 +197,11 @@ Accepts an uploaded retinal fundus image, runs preprocessing, executes Efficient
 
 ---
 
-### 4. History Detail
-`GET /api/history/{id}`
+### 5. History Detail
+`GET /api/history/{screening_id}`
+
+#### Description
+Retrieves a single screening audit entry by screening ID.
 
 #### Response (200 OK)
-Returns a single `HistoryItem` JSON object.
-- `404 Not Found`: If screening ID is not found.
+Returns a single `HistoryItem` object.

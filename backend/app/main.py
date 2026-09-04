@@ -48,6 +48,11 @@ settings.absolute_results_dir.mkdir(parents=True, exist_ok=True)
 app.mount(
     "/storage/results",
     StaticFiles(directory=str(settings.absolute_results_dir)),
+    name="results_storage"
+)
+app.mount(
+    "/results",
+    StaticFiles(directory=str(settings.absolute_results_dir)),
     name="results"
 )
 
