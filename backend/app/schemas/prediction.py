@@ -10,6 +10,7 @@ class QualityInfo(BaseModel):
     brightness: Optional[float] = None
     contrast: Optional[float] = None
     blur_score: Optional[float] = None
+    signals: Optional[Dict[str, float]] = Field(None, description="Detailed fundus validation signals")
 
 class DiagnosisInfo(BaseModel):
     class_id: int = Field(..., ge=0, le=4, description="DR severity class ID (0 to 4)")

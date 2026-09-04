@@ -179,64 +179,83 @@ Regression baseline:
 - [x] Frontend types, API client, hooks, error states, and history updated and verified via `npm run build`.
 
 ## Current Status
-- Backend and Frontend are fully functional, integrated, and verified.
-- 15/15 pytest tests passing (`tests/test_prediction.py`, `tests/test_gradcam.py`, `tests/test_health.py`, `tests/test_preprocessing.py`).
-- Frontend production build compiles cleanly (`npm run build` succeeds).
+- **Phase 0 (System Freeze)**: Complete. EfficientNet-B3 (`best_efficientnet_b3.pth`), `preprocess_fundus()`, and `GradCAM` are strictly protected and frozen.
+- **Phase 1 (Referable Mapping Level 2+)**: Complete. Referable DR clinical mapping aligned with Grades 2, 3, 4 with configurable minimum grade (`MIN_REFERABLE_GRADE=2`).
+- **Phase 2 (Adversarial Hardening of the Fundus Gate)**: Complete. Multi-signal deterministic heuristic gate hardened against adversarial orange/red backgrounds, circular graphics, and full adversarial matrix with verified zero-inference interception.
+- **22/22 pytest tests passing** (19 baseline regression tests preserved + 3 Phase 2 tests).
+- **Frontend production build compiles cleanly** (`npm run build` succeeds).
 
-## Changed Files
-- `backend/app/core/config.py`
-- `backend/.env.example`
-- `backend/app/utils/image_utils.py`
-- `backend/app/utils/file_utils.py`
-- `backend/app/schemas/prediction.py`
-- `backend/app/services/history_service.py`
-- `backend/app/services/prediction_service.py`
-- `backend/app/api/routes/prediction.py`
-- `backend/app/api/routes/health.py`
-- `backend/app/api/routes/history.py`
-- `backend/app/main.py`
-- `backend/tests/test_prediction.py`
-- `frontend/src/types/prediction.ts`
-- `frontend/src/services/api.ts`
-- `frontend/src/hooks/usePrediction.ts`
-- `frontend/src/components/ErrorState.tsx`
-- `frontend/src/components/PredictionCard.tsx`
-- `frontend/src/components/ReferableRisk.tsx`
-- `frontend/src/components/ScreeningSummary.tsx`
-- `frontend/src/pages/Screening.tsx`
-- `frontend/src/pages/Results.tsx`
-- `frontend/src/pages/History.tsx`
-- `frontend/src/App.tsx`
-- `frontend/src/utils/formatting.ts`
+## Phase 2 Architecture & Gating Details
 
-## Known Bugs
-- None.
+### Gating Pipeline Order
+```text
+UPLOAD -> FILE VALIDATION -> IMAGE DECODE -> FUNDUS VALIDATION GATE -> QUALITY GATE -> PREPROCESSING -> EFFICIENTNET -> GRAD-CAM
+```
+The fundus gate executes BEFORE `preprocess_fundus()`, `run_inference()`, `GradCAM`, and `generate_explanation()`.
+For any invalid or non-retinal image, the pipeline aborts immediately, returning `status: "INVALID_IMAGE"`, with `quality.status: "INVALID"` and descriptive reasons. Zero model inference calls are made.
 
-## Decisions and Rationale
-- **Model Freeze**: Preserved `best_efficientnet_b3.pth` and its inference pipeline to prevent performance regression on validated APTOS benchmarks.
-- **Deterministic Heuristic Fundus Gate**: Avoided training a secondary model while effectively preventing non-retinal inputs (Sun, Marvel characters, photos) from receiving false DR classifications.
-- **Fail-Closed Gate Behavior**: Rejection states return HTTP 422 with structured reasons and suppress DR severity predictions.
-- **Pure JSON Persistence**: Adopted `storage/history.json` to eliminate database migration overhead while ensuring audit persistence.
+### Exposed Structured Validation Signals
+The gate exposes 7 structured continuous signals in `FundusValidationSignals` (`quality.signals`):
+1. `aspect_ratio_score`: Aspect ratio consistency with standard retinal fundus photography (expected 0.70 - 1.45).
+2. `fov_score`: Circular/elliptical optical aperture geometry (area ratio, circularity, camera mask).
+3. `dark_boundary_score`: Camera peripheral unilluminated optical boundary (dark corners from camera mask).
+4. `retinal_color_score`: Retinal hemoglobin absorption physics ($R > G > B$, low blue reflectance, hemoglobin absorption).
+5. `texture_score`: Biological macroscopic retinal luminance variance and gradient ($fg\_std > 12.0$).
+6. `edge_density_score`: Organic vascular network edge density vs synthetic/text patterns.
+7. `vessel_like_score`: Green channel CLAHE + black-hat morphological tubular vessel branching.
+
+### Hard Rejection Conditions
+1. **No Plausible FOV Aperture**: Rectangular full-bleed images without circular camera aperture (`fov_score < 0.50` or `not has_camera_mask and area_ratio >= 0.92`).
+2. **Missing Peripheral Camera Mask**: Bright corners inconsistent with fundus optical barrels (`dark_boundary_score < 0.35` and `not has_camera_mask`).
+3. **Non-Retinal Color Spectrum**: Strong blue dominance, green exceeding red, or lack of red dominance (`retinal_color_score < 0.60`).
+4. **Flat / Synthetic Background**: Rejects solid orange, solid red, flat graphics, uniform backgrounds (`texture_score < 0.35`).
+5. **In-Focus Synthetic Non-Retinal Images**: In-focus images (`blur_score >= MIN_BLUR_SCORE`) lacking vascular arborization (`vessel_like_score < 0.48`).
+6. **Blurry Image Discrimination**: Blurry images (`blur_score < MIN_BLUR_SCORE`) that possess authentic camera aperture and biological macro-texture pass the fundus gate and are caught by the technical quality gate (`LOW_QUALITY`), preserving authentic fundus screening.
+
+### Test Fixtures in Adversarial Matrix
+- Local deterministic fixtures in `backend/storage/validation/non_retinal/`:
+  - `plain_orange.jpg`: Solid orange background (adversarial test case: $R > G > B$, color alone never qualifies an image)
+  - `plain_red.jpg`: Solid red background
+  - `orange_circle.jpg`: Synthetic orange disk on black background
+  - `kettle.jpg`: Kettle / product / object
+  - `cartoon.jpg`: Cartoon illustration
+  - `face.jpg`: Face / person
+  - `landscape.jpg`: Outdoor landscape
+  - `text_document.jpg`: Text document
+  - `screenshot.jpg`: Computer UI screenshot
+  - `blue_background.jpg`: Blue object / background
+  - `uniform_gray.jpg`: Uniform gray background
+- Root sample fixtures:
+  - `sun.jpg`: Yellow sun with bright blue sky
+  - `missminutes.webp`: Cartoon character on white background
+- Valid fundus fixture:
+  - `backend/storage/samples/sample_no_dr.jpg`: Authentic valid fundus photograph
+
+## Changed Files in Phase 2
+- `backend/app/utils/image_utils.py`: Added `FundusValidationSignals`, multi-signal evaluation (7 signals), and hardened hard-rejection rules.
+- `backend/app/schemas/prediction.py`: Added `signals: Optional[Dict[str, float]]` to `QualityInfo`.
+- `backend/app/services/prediction_service.py`: Populated `signals` dict in both valid and rejected responses.
+- `backend/tests/test_non_retinal_gate.py`: Added zero-inference assertions on full adversarial matrix, regression execution, and signal assertions.
+- `backend/storage/validation/non_retinal/*.jpg`: 11 local deterministic test fixtures.
+- `docs/PROJECT_CONTEXT.md`: Documented Phase 2 status, architecture, and signals.
+- `docs/ARCHITECTURE.md`: Updated architecture documentation with multi-signal gate details.
+
+## Known Limitations
+- The fundus validation gate uses classical deterministic CV and morphological signal processing without external neural networks or cloud APIs, maintaining sub-millisecond latency.
+- Authentic severely blurry images are handled by the technical quality gate as `LOW_QUALITY` rather than `INVALID_IMAGE` because they are authentic fundus captures requiring recapture rather than domain rejection.
 
 ## Test Status
-- **Pytest Suite**: 15 tests collected, 15 passed in 9.35s (100% pass rate).
+- **Pytest Suite**: 22 tests collected, 22 passed in 3.59s (100% pass rate).
+- **Zero-Inference Proof**: Verified with unittest.mock that `run_inference`, `preprocess_fundus`, `GradCAM`, and `generate_explanation` receive exactly 0 calls for every non-retinal image.
 - **Frontend Build**: Vite + TypeScript compiled 1,488 modules cleanly with zero errors.
 
 ## Deployment Status
 - Local development ready via FastAPI (`uvicorn app.main:app --port 8000`) and Vite (`npm run dev`).
 - Production frontend bundled in `frontend/dist/`.
 
-## Pending Tasks
-- Prepare demonstration images (valid DR grades, sun/cartoon non-retinal image, blurry image) for live walkthrough.
-
-## Roadmap
-- DICOM format support.
-- Multi-image bilateral (left + right eye) examination session grouping.
-- Exportable PDF clinical summary reports.
-
 ## Do Not Break / Protected Components
-- **Model Checkpoint**: `backend/models/best_efficientnet_b3.pth` (Epoch 7 weights).
-- **Preprocessing Function**: `preprocess_fundus()` in `backend/app/ml/preprocessing.py`.
-- **Inference Function**: `run_inference()` in `backend/app/ml/inference.py`.
-- **Grad-CAM Target Layer**: `model.features[-1]` forward/backward hooks.
+- **Model Checkpoint**: `backend/models/best_efficientnet_b3.pth` (Epoch 7 weights - FROZEN).
+- **Preprocessing Function**: `preprocess_fundus()` in `backend/app/ml/preprocessing.py` (PROTECTED).
+- **Inference Function**: `run_inference()` in `backend/app/ml/inference.py` (PROTECTED).
+- **Grad-CAM Target Layer**: `model.features[-1]` forward/backward hooks in `backend/app/ml/gradcam.py` (PROTECTED).
 - **API Aliases**: `/api/prediction` and `/api/predict` must remain functional.

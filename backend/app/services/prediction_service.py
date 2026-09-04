@@ -130,7 +130,8 @@ class PredictionService:
                         "height": quality_result.height,
                         "brightness": quality_result.brightness,
                         "contrast": quality_result.contrast,
-                        "blur_score": quality_result.blur_score
+                        "blur_score": quality_result.blur_score,
+                        "signals": quality_result.signals.to_dict() if quality_result.signals else None
                     },
                     "created_at": datetime.utcnow().isoformat()
                 }
@@ -156,7 +157,8 @@ class PredictionService:
                         "height": quality_result.height,
                         "brightness": quality_result.brightness,
                         "contrast": quality_result.contrast,
-                        "blur_score": quality_result.blur_score
+                        "blur_score": quality_result.blur_score,
+                        "signals": quality_result.signals.to_dict() if quality_result.signals else None
                     },
                     "created_at": datetime.utcnow().isoformat()
                 }
@@ -289,7 +291,8 @@ class PredictionService:
                     height=quality_result.height,
                     brightness=quality_result.brightness,
                     contrast=quality_result.contrast,
-                    blur_score=quality_result.blur_score
+                    blur_score=quality_result.blur_score,
+                    signals=quality_result.signals.to_dict() if quality_result.signals else None
                 ),
                 explainability=ExplainabilityInfo(
                     available=gradcam_available,

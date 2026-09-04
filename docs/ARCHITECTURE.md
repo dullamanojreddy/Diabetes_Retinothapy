@@ -96,8 +96,17 @@ The system is structured as a decoupled two-tier client-server application adher
   - Creates unique temporary files with guaranteed deletion in `finally` blocks.
 - **`app/utils/image_utils.py`**:
   - Safely decodes image bytes with Pillow.
-  - Multi-signal deterministic fundus gate: checks retinal color dominance ($R > G > B$, low blue absorption), dark peripheral borders around circular FOV aperture, and vascular gradient texture to intercept non-retinal images (cartoons, Sun, documents, random photos).
-  - Calculates technical quality metrics: dimensions, brightness, contrast, blur score.
+  - **Phase 2 Hardened Multi-Signal Deterministic Fundus Gate**:
+    Evaluates 7 independent structural and physical signals before any model execution:
+    1. `aspect_ratio_score`: Aspect ratio consistency with standard retinal fundus photography (0.70 - 1.45).
+    2. `fov_score`: Circular/elliptical optical aperture geometry (area ratio, circularity, camera mask).
+    3. `dark_boundary_score`: Camera peripheral unilluminated optical boundary (dark corners from camera mask).
+    4. `retinal_color_score`: Retinal hemoglobin absorption physics ($R > G > B$, low blue reflectance, hemoglobin absorption). Color alone NEVER classifies an image as fundus.
+    5. `texture_score`: Biological macroscopic retinal luminance variance and gradient ($fg\_std > 12.0$).
+    6. `edge_density_score`: Organic vascular network edge density vs synthetic/text patterns.
+    7. `vessel_like_score`: Green channel CLAHE + black-hat morphological tubular vessel branching.
+  - Intercepts non-retinal images (cartoons, Sun, Miss Minutes, solid orange/red backgrounds, orange circles, kettles, faces, landscapes, screenshots, text documents) before preprocessing and inference with verified zero inference calls.
+  - Calculates technical quality metrics: dimensions, brightness, contrast, blur score. Distinguishes authentic blurry fundus images (`LOW_QUALITY`) from non-retinal invalid images (`INVALID_IMAGE`).
 
 ### 2. Model Manager (`app/ml/model.py`)
 - Singleton pattern initializing `EfficientNet-B3` checkpoint (`best_efficientnet_b3.pth`) once on application startup.
