@@ -1,0 +1,13 @@
+{
+  "method": "temperature_scaling",
+  "temperature": 1.0949,
+  "fit_dataset": "validation_split_calibrated",
+  "metrics": {
+    "uncalibrated_ece": 0.2219,
+    "calibrated_ece": 0.2341,
+    "ece_reduction_percent": -5.52,
+    "uncalibrated_nll": 0.6551,
+    "calibrated_nll": 0.6506
+  },
+  "calibrated_at": "2026-09-04T00:00:00Z"
+}

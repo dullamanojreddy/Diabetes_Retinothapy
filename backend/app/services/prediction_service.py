@@ -13,6 +13,7 @@ from app.ml.inference import run_inference
 from app.ml.gradcam import GradCAM
 from app.ml.explainability import generate_explanation
 from app.ml.enhancement import fundus_enhancer
+from app.ml.calibration import temperature_scaler
 from app.retina import analyze_retinal_structure, analyze_lesions
 import numpy as np
 from app.services.history_service import history_service
@@ -25,6 +26,7 @@ from app.schemas.prediction import (
     ReferableRiskInfo,
     ExplainabilityInfo,
     QualityInfo,
+    CalibrationInfo,
     ModelMetadata
 )
 
@@ -316,6 +318,26 @@ class PredictionService:
                 logger.warning(f"Lesion candidate analysis error: {e}")
                 lesions_dict = {"research_only": True, "status": "UNAVAILABLE", "error": str(e)}
 
+            # Phase 7: Post-Hoc Confidence Calibration (Temperature Scaling)
+            try:
+                cal_res = temperature_scaler.calibrate_probabilities(
+                    {settings.CLASS_MAPPING[i]: float(raw_probs[i]) for i in range(5)}
+                )
+                calibration_info = CalibrationInfo(
+                    temperature=cal_res.temperature,
+                    is_calibrated=cal_res.is_calibrated,
+                    calibrated_confidence=cal_res.calibrated_confidence,
+                    uncalibrated_confidence=cal_res.uncalibrated_confidence,
+                    uncalibrated_probabilities=cal_res.uncalibrated_probabilities,
+                    calibrated_probabilities=cal_res.calibrated_probabilities,
+                    metrics=cal_res.metrics
+                )
+                calibration_dict = cal_res.to_dict()
+            except Exception as e:
+                logger.warning(f"Confidence calibration error: {e}")
+                calibration_info = None
+                calibration_dict = None
+
             elapsed_ms = round((time.time() - start_time) * 1000, 2)
             timestamp_now = datetime.utcnow().isoformat()
 
@@ -364,6 +386,7 @@ class PredictionService:
                 ),
                 structures=structures_dict,
                 lesions=lesions_dict,
+                calibration=calibration_info,
                 model=ModelMetadata(
                     name="EfficientNet-B3",
                     version=settings.MODEL_VERSION
@@ -407,7 +430,8 @@ class PredictionService:
                 "overlay_url": overlay_url,
                 "original_url": original_url,
                 "structures": structures_dict,
-                "lesions": lesions_dict
+                "lesions": lesions_dict,
+                "calibration": calibration_dict
             })
 
             return status.HTTP_200_OK, response.model_dump(mode="json")

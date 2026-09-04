@@ -55,6 +55,15 @@ class ExplainabilityInfo(BaseModel):
     def gradcam_available(self) -> bool:
         return self.available
 
+class CalibrationInfo(BaseModel):
+    temperature: float = Field(..., description="Post-hoc temperature scaling parameter T > 0")
+    is_calibrated: bool = Field(True, description="Whether probabilities have been temperature-calibrated")
+    calibrated_confidence: float = Field(..., ge=0.0, le=1.0, description="Calibrated top-1 class confidence")
+    uncalibrated_confidence: float = Field(..., ge=0.0, le=1.0, description="Raw uncalibrated top-1 class confidence")
+    uncalibrated_probabilities: Dict[str, float] = Field(..., description="Raw model softmax probabilities")
+    calibrated_probabilities: Dict[str, float] = Field(..., description="Temperature-scaled calibrated probabilities")
+    metrics: Optional[Dict[str, Any]] = Field(None, description="Calibration performance metrics (ECE, NLL)")
+
 class ModelMetadata(BaseModel):
     name: str = Field("EfficientNet-B3", description="Model architecture name")
     version: str = Field("b3-aptos-epoch7", description="Model checkpoint / epoch version")
@@ -74,6 +83,7 @@ class PredictionResponse(BaseModel):
     explainability: Optional[ExplainabilityInfo] = None
     structures: Optional[Dict[str, Any]] = Field(None, description="Retinal anatomical landmark analysis (optic disc, fovea, vessels)")
     lesions: Optional[Dict[str, Any]] = Field(None, description="Research-only lesion candidate evidence (microaneurysms, exudates, hemorrhages, neovascularization)")
+    calibration: Optional[CalibrationInfo] = Field(None, description="Post-hoc confidence calibration telemetry")
     model: ModelMetadata = Field(default_factory=ModelMetadata)
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     
