@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, ArrowLeft, Download, Printer, ShieldAlert, Sparkles } from 'lucide-react';
+import { RefreshCw, ArrowLeft } from 'lucide-react';
 import { PredictionResponse } from '../types/prediction';
 import { PredictionCard } from '../components/PredictionCard';
 import { ReferableRisk } from '../components/ReferableRisk';
@@ -7,6 +7,11 @@ import { ProbabilityChart } from '../components/ProbabilityChart';
 import { GradCAMViewer } from '../components/GradCAMViewer';
 import { ScreeningSummary } from '../components/ScreeningSummary';
 import { MedicalDisclaimer } from '../components/MedicalDisclaimer';
+import { QualityAssessmentCard } from '../components/QualityAssessmentCard';
+import { RetinalStructuresCard } from '../components/RetinalStructuresCard';
+import { LesionEvidenceCard } from '../components/LesionEvidenceCard';
+import { ConfidenceCalibrationCard } from '../components/ConfidenceCalibrationCard';
+import { ReportActions } from '../components/ReportActions';
 
 interface ResultsProps {
   result: PredictionResponse;
@@ -63,6 +68,25 @@ export const Results: React.FC<ResultsProps> = ({ result, onAnalyzeAnother }) =>
         </div>
       )}
 
+      {/* Phase 8 & 10: Report Actions & Monotonic Performance Instrumentation */}
+      <ReportActions
+        screeningId={result.screening_id || result.id || 'current'}
+        timing={result.timing}
+      />
+
+      {/* Phase 3 & 4: Image Quality & Technical Evaluation */}
+      {result.quality && (
+        <QualityAssessmentCard quality={result.quality} />
+      )}
+
+      {/* Phase 7: Post-Hoc Confidence Calibration */}
+      {prediction && result.calibration && (
+        <ConfidenceCalibrationCard
+          calibration={result.calibration}
+          rawConfidence={prediction.confidence}
+        />
+      )}
+
       {/* Probability Distribution */}
       {prediction && (
         <ProbabilityChart
@@ -78,6 +102,12 @@ export const Results: React.FC<ResultsProps> = ({ result, onAnalyzeAnother }) =>
           classNameTitle={prediction.label || prediction.class_name || `Class ${prediction.class_id}`}
         />
       )}
+
+      {/* Phase 5: Retinal Anatomical Landmarks */}
+      <RetinalStructuresCard structures={result.structures} />
+
+      {/* Phase 6: Candidate Lesion Evidence (Research Only) */}
+      <LesionEvidenceCard lesions={result.lesions} />
 
       {/* Audit Summary Card */}
       <ScreeningSummary result={result} />

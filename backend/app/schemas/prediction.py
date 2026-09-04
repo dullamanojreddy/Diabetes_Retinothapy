@@ -64,6 +64,12 @@ class CalibrationInfo(BaseModel):
     calibrated_probabilities: Dict[str, float] = Field(..., description="Temperature-scaled calibrated probabilities")
     metrics: Optional[Dict[str, Any]] = Field(None, description="Calibration performance metrics (ECE, NLL)")
 
+class TimingInfo(BaseModel):
+    total_pipeline_ms: float = Field(..., description="End-to-end processing latency in ms")
+    inference_ms: float = Field(..., description="EfficientNet forward pass latency in ms")
+    is_warmup: bool = Field(False, description="Whether this request occurred during model cold start")
+    stages_ms: Dict[str, float] = Field(default_factory=dict, description="Granular per-stage processing times in ms")
+
 class ModelMetadata(BaseModel):
     name: str = Field("EfficientNet-B3", description="Model architecture name")
     version: str = Field("b3-aptos-epoch7", description="Model checkpoint / epoch version")
@@ -84,6 +90,7 @@ class PredictionResponse(BaseModel):
     structures: Optional[Dict[str, Any]] = Field(None, description="Retinal anatomical landmark analysis (optic disc, fovea, vessels)")
     lesions: Optional[Dict[str, Any]] = Field(None, description="Research-only lesion candidate evidence (microaneurysms, exudates, hemorrhages, neovascularization)")
     calibration: Optional[CalibrationInfo] = Field(None, description="Post-hoc confidence calibration telemetry")
+    timing: Optional[TimingInfo] = Field(None, description="Monotonic pipeline execution timing and benchmarks")
     model: ModelMetadata = Field(default_factory=ModelMetadata)
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     

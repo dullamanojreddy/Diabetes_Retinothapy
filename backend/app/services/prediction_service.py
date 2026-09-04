@@ -15,6 +15,7 @@ from app.ml.explainability import generate_explanation
 from app.ml.enhancement import fundus_enhancer
 from app.ml.calibration import temperature_scaler
 from app.retina import analyze_retinal_structure, analyze_lesions
+from app.services.timing_service import PipelineTimer
 import numpy as np
 from app.services.history_service import history_service
 from app.services.quality_service import quality_service
@@ -27,6 +28,7 @@ from app.schemas.prediction import (
     ExplainabilityInfo,
     QualityInfo,
     CalibrationInfo,
+    TimingInfo,
     ModelMetadata
 )
 
@@ -61,41 +63,43 @@ class PredictionService:
         start_time = time.time()
         screening_id = generate_unique_id()
         temp_saved_path: Optional[Path] = None
+        timer = PipelineTimer()
 
         try:
             # 1. File Validation
-            if not file.filename:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Uploaded file must have a valid filename."
-                )
-            
-            safe_filename = sanitize_filename(file.filename)
-            ext = f".{safe_filename.split('.')[-1].lower()}" if "." in safe_filename else ""
-            if ext not in settings.allowed_extension_list:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Unsupported file format '{ext}'. Allowed formats: {', '.join(settings.allowed_extension_list)}"
-                )
+            with timer.track("file_validation"):
+                if not file.filename:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Uploaded file must have a valid filename."
+                    )
+                
+                safe_filename = sanitize_filename(file.filename)
+                ext = f".{safe_filename.split('.')[-1].lower()}" if "." in safe_filename else ""
+                if ext not in settings.allowed_extension_list:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Unsupported file format '{ext}'. Allowed formats: {', '.join(settings.allowed_extension_list)}"
+                    )
 
-            contents = await file.read()
-            if not contents or len(contents) == 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="The uploaded image file is empty (0 bytes)."
-                )
+                contents = await file.read()
+                if not contents or len(contents) == 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="The uploaded image file is empty (0 bytes)."
+                    )
 
-            max_bytes = settings.effective_max_upload_mb * 1024 * 1024
-            if len(contents) > max_bytes:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"File exceeds maximum allowed size of {settings.effective_max_upload_mb}MB."
-                )
+                max_bytes = settings.effective_max_upload_mb * 1024 * 1024
+                if len(contents) > max_bytes:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"File exceeds maximum allowed size of {settings.effective_max_upload_mb}MB."
+                    )
 
-            # Save temporary file for server-side traceability
-            temp_saved_path = settings.absolute_upload_dir / f"{screening_id}_{safe_filename}"
-            with open(temp_saved_path, "wb") as f:
-                f.write(contents)
+                # Save temporary file for server-side traceability
+                temp_saved_path = settings.absolute_upload_dir / f"{screening_id}_{safe_filename}"
+                with open(temp_saved_path, "wb") as f:
+                    f.write(contents)
 
             # 2. Image Decoding
             try:
@@ -203,7 +207,8 @@ class PredictionService:
 
             # 4. Existing Working Preprocessing Pipeline
             try:
-                input_tensor, preprocessed_rgb_380 = preprocess_fundus(model_pil_image)
+                with timer.track("preprocessing"):
+                    input_tensor, preprocessed_rgb_380 = preprocess_fundus(model_pil_image)
             except Exception as e:
                 logger.error(f"Preprocessing error: {e}", exc_info=True)
                 raise HTTPException(
@@ -217,9 +222,11 @@ class PredictionService:
 
             # 5. Existing EfficientNet-B3 Model Inference
             try:
-                model = model_manager.get_model()
-                device = model_manager.device
-                inference_result = run_inference(model, input_tensor, device)
+                with timer.track("inference"):
+                    model = model_manager.get_model()
+                    device = model_manager.device
+                    inference_result = run_inference(model, input_tensor, device)
+                    timer.record_inference_executed()
             except Exception as e:
                 logger.error(f"Inference execution error: {e}", exc_info=True)
                 raise HTTPException(
@@ -298,8 +305,9 @@ class PredictionService:
 
             # Phase 5: Retinal Structure Analysis (optic disc, fovea, vessels)
             try:
-                structures_result, vessel_mask, skeleton_mask = analyze_retinal_structure(img_np)
-                structures_dict = structures_result.to_dict()
+                with timer.track("retinal_structures"):
+                    structures_result, vessel_mask, skeleton_mask = analyze_retinal_structure(img_np)
+                    structures_dict = structures_result.to_dict()
             except Exception as e:
                 logger.warning(f"Retinal structure analysis error: {e}")
                 structures_dict = {"status": "UNAVAILABLE", "error": str(e)}
@@ -307,38 +315,46 @@ class PredictionService:
 
             # Phase 6: Lesion Candidate Analysis (microaneurysms, exudates, hemorrhages, neovascularization)
             try:
-                lesions_result = analyze_lesions(
-                    img_np,
-                    structures=structures_result if 'structures_result' in locals() else None,
-                    vessel_mask=vessel_mask,
-                    skeleton_mask=skeleton_mask
-                )
-                lesions_dict = lesions_result.to_dict()
+                with timer.track("lesion_analysis"):
+                    lesions_result = analyze_lesions(
+                        img_np,
+                        structures=structures_result if 'structures_result' in locals() else None,
+                        vessel_mask=vessel_mask,
+                        skeleton_mask=skeleton_mask
+                    )
+                    lesions_dict = lesions_result.to_dict()
             except Exception as e:
                 logger.warning(f"Lesion candidate analysis error: {e}")
                 lesions_dict = {"research_only": True, "status": "UNAVAILABLE", "error": str(e)}
 
             # Phase 7: Post-Hoc Confidence Calibration (Temperature Scaling)
             try:
-                cal_res = temperature_scaler.calibrate_probabilities(
-                    {settings.CLASS_MAPPING[i]: float(raw_probs[i]) for i in range(5)}
-                )
-                calibration_info = CalibrationInfo(
-                    temperature=cal_res.temperature,
-                    is_calibrated=cal_res.is_calibrated,
-                    calibrated_confidence=cal_res.calibrated_confidence,
-                    uncalibrated_confidence=cal_res.uncalibrated_confidence,
-                    uncalibrated_probabilities=cal_res.uncalibrated_probabilities,
-                    calibrated_probabilities=cal_res.calibrated_probabilities,
-                    metrics=cal_res.metrics
-                )
-                calibration_dict = cal_res.to_dict()
+                with timer.track("calibration"):
+                    cal_res = temperature_scaler.calibrate_probabilities(
+                        {settings.CLASS_MAPPING[i]: float(raw_probs[i]) for i in range(5)}
+                    )
+                    calibration_info = CalibrationInfo(
+                        temperature=cal_res.temperature,
+                        is_calibrated=cal_res.is_calibrated,
+                        calibrated_confidence=cal_res.calibrated_confidence,
+                        uncalibrated_confidence=cal_res.uncalibrated_confidence,
+                        uncalibrated_probabilities=cal_res.uncalibrated_probabilities,
+                        calibrated_probabilities=cal_res.calibrated_probabilities,
+                        metrics=cal_res.metrics
+                    )
+                    calibration_dict = cal_res.to_dict()
             except Exception as e:
                 logger.warning(f"Confidence calibration error: {e}")
                 calibration_info = None
                 calibration_dict = None
 
-            elapsed_ms = round((time.time() - start_time) * 1000, 2)
+            timing_summary = timer.get_summary()
+            timing_info = TimingInfo(
+                total_pipeline_ms=timing_summary["total_pipeline_ms"],
+                inference_ms=timing_summary["inference_ms"],
+                is_warmup=timing_summary["is_warmup"],
+                stages_ms=timing_summary["stages_ms"]
+            )
             timestamp_now = datetime.utcnow().isoformat()
 
             # 8. Build Structured Prediction Response
@@ -387,6 +403,7 @@ class PredictionService:
                 structures=structures_dict,
                 lesions=lesions_dict,
                 calibration=calibration_info,
+                timing=timing_info,
                 model=ModelMetadata(
                     name="EfficientNet-B3",
                     version=settings.MODEL_VERSION
@@ -403,7 +420,7 @@ class PredictionService:
                 ),
                 explanation_text=explanation_text,
                 referral_recommendation=recommendation_text,
-                inference_time_ms=elapsed_ms
+                inference_time_ms=timing_summary["total_pipeline_ms"]
             )
 
             # 9. Persist Result to History
@@ -431,7 +448,8 @@ class PredictionService:
                 "original_url": original_url,
                 "structures": structures_dict,
                 "lesions": lesions_dict,
-                "calibration": calibration_dict
+                "calibration": calibration_dict,
+                "timing": timing_summary
             })
 
             return status.HTTP_200_OK, response.model_dump(mode="json")
