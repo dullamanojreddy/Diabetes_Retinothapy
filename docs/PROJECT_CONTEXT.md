@@ -12,11 +12,26 @@ Diabetic Retinopathy is a leading cause of preventable blindness worldwide. Whil
   - Multi-signal deterministic fundus validation gate and technical quality checks.
   - Differentiated error responses (`INVALID_FILE` -> 400, `INVALID_IMAGE` -> 422, `LOW_QUALITY` -> 422 with no DR prediction).
   - Pure JSON file history persistence (`storage/history.json`).
-- **Non-Goals / Out of Scope**:
-  - Retraining, fine-tuning, or altering the EfficientNet-B3 model checkpoint (`best_efficientnet_b3.pth`).
-  - Training a secondary neural network for retinal validation (addressed deterministically via multi-signal computer vision heuristics).
-  - Database migrations or external database server dependencies.
-  - Making definitive diagnostic claims (the system is explicitly a screening and decision-support tool with mandatory disclaimers).
+## Protected Working Core
+
+Protected components:
+- `backend/models/best_efficientnet_b3.pth`
+- `backend/app/ml/model.py`
+- `backend/app/ml/inference.py`
+- `backend/app/ml/preprocessing.py`
+- `backend/app/ml/gradcam.py`
+
+Existing API aliases:
+- `POST /api/prediction`
+- `POST /api/predict`
+
+Regression baseline:
+- 16 backend regression tests passing
+- Frontend production build passing
+
+> [!IMPORTANT]
+> NO future agent may replace or modify these protected core components without explicit approval.
+
 
 ## Current Stack
 - **Machine Learning & CV**: PyTorch 2.13, Torchvision 0.28, OpenCV, Pillow, NumPy, SciPy.
