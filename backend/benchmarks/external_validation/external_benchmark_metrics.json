@@ -1,0 +1,210 @@
+{
+  "Messidor-2": {
+    "num_samples": 1748,
+    "multi_class": {
+      "accuracy": 0.8936,
+      "macro_f1": 0.8622,
+      "quadratic_weighted_kappa": 0.969,
+      "per_class": {
+        "class_0": {
+          "tp": 883,
+          "fp": 17,
+          "fn": 74,
+          "tn": 774,
+          "precision": 0.9811,
+          "recall": 0.9227,
+          "f1": 0.951
+        },
+        "class_1": {
+          "tp": 183,
+          "fp": 96,
+          "fn": 37,
+          "tn": 1432,
+          "precision": 0.6559,
+          "recall": 0.8318,
+          "f1": 0.7335
+        },
+        "class_2": {
+          "tp": 247,
+          "fp": 31,
+          "fn": 47,
+          "tn": 1423,
+          "precision": 0.8885,
+          "recall": 0.8401,
+          "f1": 0.8636
+        },
+        "class_3": {
+          "tp": 128,
+          "fp": 35,
+          "fn": 18,
+          "tn": 1567,
+          "precision": 0.7853,
+          "recall": 0.8767,
+          "f1": 0.8285
+        },
+        "class_4": {
+          "tp": 121,
+          "fp": 7,
+          "fn": 10,
+          "tn": 1610,
+          "precision": 0.9453,
+          "recall": 0.9237,
+          "f1": 0.9344
+        }
+      },
+      "confusion_matrix": [
+        [
+          883,
+          74,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          183,
+          20,
+          0,
+          0
+        ],
+        [
+          0,
+          22,
+          247,
+          25,
+          0
+        ],
+        [
+          0,
+          0,
+          11,
+          128,
+          7
+        ],
+        [
+          0,
+          0,
+          0,
+          10,
+          121
+        ]
+      ]
+    },
+    "referable_dr_level_2_plus": {
+      "sensitivity": 0.9615,
+      "specificity": 0.983,
+      "ppv": 0.9649,
+      "npv": 0.9813,
+      "accuracy": 0.976,
+      "auc": 0.9704,
+      "tp": 549,
+      "fp": 20,
+      "fn": 22,
+      "tn": 1157
+    }
+  },
+  "IDRiD": {
+    "num_samples": 516,
+    "multi_class": {
+      "accuracy": 0.8953,
+      "macro_f1": 0.8568,
+      "quadratic_weighted_kappa": 0.9665,
+      "per_class": {
+        "class_0": {
+          "tp": 273,
+          "fp": 7,
+          "fn": 16,
+          "tn": 220,
+          "precision": 0.975,
+          "recall": 0.9446,
+          "f1": 0.9596
+        },
+        "class_1": {
+          "tp": 50,
+          "fp": 26,
+          "fn": 12,
+          "tn": 428,
+          "precision": 0.6579,
+          "recall": 0.8065,
+          "f1": 0.7246
+        },
+        "class_2": {
+          "tp": 76,
+          "fp": 8,
+          "fn": 19,
+          "tn": 413,
+          "precision": 0.9048,
+          "recall": 0.8,
+          "f1": 0.8492
+        },
+        "class_3": {
+          "tp": 37,
+          "fp": 12,
+          "fn": 4,
+          "tn": 463,
+          "precision": 0.7551,
+          "recall": 0.9024,
+          "f1": 0.8222
+        },
+        "class_4": {
+          "tp": 26,
+          "fp": 1,
+          "fn": 3,
+          "tn": 486,
+          "precision": 0.963,
+          "recall": 0.8966,
+          "f1": 0.9286
+        }
+      },
+      "confusion_matrix": [
+        [
+          273,
+          16,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          50,
+          5,
+          0,
+          0
+        ],
+        [
+          0,
+          10,
+          76,
+          9,
+          0
+        ],
+        [
+          0,
+          0,
+          3,
+          37,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          3,
+          26
+        ]
+      ]
+    },
+    "referable_dr_level_2_plus": {
+      "sensitivity": 0.9394,
+      "specificity": 0.9858,
+      "ppv": 0.9688,
+      "npv": 0.9719,
+      "accuracy": 0.9709,
+      "auc": 0.9622,
+      "tp": 155,
+      "fp": 5,
+      "fn": 10,
+      "tn": 346
+    }
+  }
+}
