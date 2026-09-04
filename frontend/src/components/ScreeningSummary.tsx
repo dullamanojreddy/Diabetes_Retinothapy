@@ -78,7 +78,7 @@ export const ScreeningSummary: React.FC<ScreeningSummaryProps> = ({ result }) =>
         </div>
 
         <div className="p-3.5 rounded-xl bg-surface-950/70 border border-surface-800/80">
-          <span className="text-surface-400 block mb-1">Referable Probability</span>
+          <span className="text-surface-400 block mb-1">Referable Risk (Level 2+)</span>
           <span className="font-bold font-mono text-sm text-surface-100">
             {formatPercent(referable.probability, 2)}
           </span>

@@ -29,7 +29,7 @@ export const ReferableRisk: React.FC<ReferableRiskProps> = ({
           </div>
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-surface-400 block">
-              Referable DR Assessment (Grades 1–4)
+              Referable DR Assessment (Level 2+ / Grades 2–4)
             </span>
             <div className="flex items-center space-x-2 mt-0.5">
               <span className={`text-xl sm:text-2xl font-black tracking-tight ${

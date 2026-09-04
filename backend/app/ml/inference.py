@@ -23,9 +23,10 @@ def run_inference(
     predicted_class_id = int(np.argmax(probabilities))
     confidence = float(probabilities[predicted_class_id])
     
-    # Referable DR is defined as class >= 1 (Mild, Moderate, Severe, Proliferative)
-    # Sum probabilities of classes 1, 2, 3, 4
-    referable_probability = float(np.sum(probabilities[1:]))
+    # Clinical SIH Standard: Referable DR is defined as Level 2+ (Moderate, Severe, Proliferative DR)
+    # Sum probabilities of classes 2, 3, 4 (excluding No DR and Mild DR)
+    min_grade = getattr(settings, "REFERABLE_MIN_GRADE", 2)
+    referable_probability = float(np.sum(probabilities[min_grade:]))
     is_referable = bool(referable_probability >= settings.REFERABLE_THRESHOLD)
     
     probabilities_dict = {

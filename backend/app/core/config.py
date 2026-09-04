@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     DEVICE: str = "auto"  # Backward compatibility
     MODEL_VERSION: str = "b3-aptos-epoch7"
     REFERABLE_THRESHOLD: float = 0.13
+    REFERABLE_MIN_GRADE: int = 2
     
     # Upload and storage limits
     MAX_UPLOAD_MB: int = 10

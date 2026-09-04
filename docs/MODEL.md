@@ -45,10 +45,12 @@
 - **Weighted-F1**: 0.8195
 
 ## Referable DR Definition & Cutoff Analysis
-- **Definition**: Cases with DR grade $\ge 1$ (Mild, Moderate, Severe, or Proliferative DR) require clinical follow-up or referral.
+- **Definition**: Per SIH clinical guidelines and international diabetic eye screening consensus, **Referable DR is defined as Level 2+** (Moderate DR, Severe DR, or Proliferative DR). Grade 0 (No DR) and Grade 1 (Mild DR) are categorized as non-referable (routine periodic rescreening).
 - **Formula**:
-  $$P(\text{Referable}) = \sum_{i=1}^4 P(\text{Class } i) = 1.0 - P(\text{No DR})$$
-- **Configured Decision Cutoff**: `REFERABLE_THRESHOLD = 0.13`
+  $$P(\text{Referable}) = \sum_{i=2}^4 P(\text{Class } i) = P(\text{Moderate}) + P(\text{Severe}) + P(\text{Proliferative})$$
+- **Configured Thresholds**:
+  - `REFERABLE_MIN_GRADE = 2`
+  - `REFERABLE_THRESHOLD = 0.13`
 - **Referable Test Evaluation**:
   - Sensitivity: **0.8540**
   - Specificity: **0.9607**

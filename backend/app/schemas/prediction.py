@@ -22,7 +22,7 @@ class DiagnosisInfo(BaseModel):
         return self.label
 
 class ReferableRiskInfo(BaseModel):
-    probability: float = Field(..., ge=0.0, le=1.0, description="Sum of probabilities for grades 1..4")
+    probability: float = Field(..., ge=0.0, le=1.0, description="Sum of probabilities for Level 2+ referable DR (grades 2..4: Moderate, Severe, Proliferative)")
     threshold: float = Field(..., description="Operating decision threshold (e.g. 0.13)")
     status: str = Field(..., description="REFERABLE or NON_REFERABLE")
 
