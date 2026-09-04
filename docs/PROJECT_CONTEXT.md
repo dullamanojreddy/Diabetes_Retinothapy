@@ -183,7 +183,8 @@ Regression baseline:
 - **Phase 1 (Referable Mapping Level 2+)**: Complete. Referable DR clinical mapping aligned with Grades 2, 3, 4 with configurable minimum grade (`MIN_REFERABLE_GRADE=2`).
 - **Phase 2 (Adversarial Hardening of the Fundus Gate)**: Complete. Multi-signal deterministic heuristic gate hardened against adversarial orange/red backgrounds, circular graphics, and full adversarial matrix with verified zero-inference interception.
 - **Phase 3 (Complete Image-Quality Assessment)**: Complete. Implemented `QualityService` (`quality_service.py`) evaluating Focus, Illumination, Contrast, Field of View, and Glare. Categorizes images into `GOOD`, `BORDERLINE`, and `UNGRADEABLE` with clinical `recapture_guidance`. Integrated into `prediction_service.py` with verified zero inference on ungradeable captures.
-- **29/29 pytest tests passing** (22 baseline regression tests preserved + 7 Phase 3 quality tests).
+- **Phase 4 (Borderline Fundus Enhancement and Recapture Guidance)**: Complete. Implemented `FundusEnhancer` (`backend/app/ml/enhancement.py`) applying conservative LAB CLAHE (`clipLimit=2.0`, `tileGridSize=(8, 8)`) and mild illumination normalization strictly to `BORDERLINE` captures, with safety verification and automatic reversion to untouched original on degradation. `GOOD` and `UNGRADEABLE` captures strictly bypass enhancement.
+- **40/40 pytest tests passing** (29 baseline regression tests preserved + 11 Phase 4 enhancement tests).
 - **Frontend production build compiles cleanly** (`npm run build` succeeds).
 
 ## Phase 2 Architecture & Gating Details

@@ -19,6 +19,10 @@ class QualityInfo(BaseModel):
     contrast: Optional[float] = None
     blur_score: Optional[float] = None
     signals: Optional[Dict[str, float]] = Field(None, description="Detailed fundus validation signals")
+    enhancement_applied: Optional[bool] = Field(None, description="Whether Phase 4 enhancement was executed")
+    enhancement_accepted: Optional[bool] = Field(None, description="Whether enhanced candidate passed safety verification")
+    enhancement_method: Optional[str] = Field(None, description="Enhancement method or bypass reason")
+    enhancement_details: Optional[Dict[str, Any]] = Field(None, description="Detailed enhancement operation metadata")
 
 class DiagnosisInfo(BaseModel):
     class_id: int = Field(..., ge=0, le=4, description="DR severity class ID (0 to 4)")

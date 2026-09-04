@@ -12,6 +12,7 @@ from app.ml.preprocessing import preprocess_fundus
 from app.ml.inference import run_inference
 from app.ml.gradcam import GradCAM
 from app.ml.explainability import generate_explanation
+from app.ml.enhancement import fundus_enhancer
 import numpy as np
 from app.services.history_service import history_service
 from app.services.quality_service import quality_service
@@ -189,9 +190,17 @@ class PredictionService:
                 })
                 return 422, rejection
 
+            # Phase 4: Borderline Fundus Enhancement and Safety Verification
+            enhancement_result = fundus_enhancer.enhance(img_np, quality_assessment)
+            if enhancement_result.applied and enhancement_result.accepted:
+                logger.info(f"Phase 4 enhancement accepted for borderline fundus: {enhancement_result.reasons}")
+                model_pil_image = Image.fromarray(enhancement_result.image_rgb)
+            else:
+                model_pil_image = pil_image
+
             # 4. Existing Working Preprocessing Pipeline
             try:
-                input_tensor, preprocessed_rgb_380 = preprocess_fundus(pil_image)
+                input_tensor, preprocessed_rgb_380 = preprocess_fundus(model_pil_image)
             except Exception as e:
                 logger.error(f"Preprocessing error: {e}", exc_info=True)
                 raise HTTPException(
@@ -305,7 +314,7 @@ class PredictionService:
                 quality=QualityInfo(
                     status="ACCEPT",
                     grade=quality_assessment.grade,
-                    score=quality_assessment.score,
+                    score=enhancement_result.enhanced_quality_score if (enhancement_result.applied and enhancement_result.accepted) else quality_assessment.score,
                     reasons=quality_assessment.reasons,
                     recapture_guidance=quality_assessment.recapture_guidance,
                     focus=quality_assessment.focus.to_dict(),
@@ -318,7 +327,11 @@ class PredictionService:
                     brightness=quality_result.brightness,
                     contrast=quality_result.contrast,
                     blur_score=quality_result.blur_score,
-                    signals=quality_result.signals.to_dict() if quality_result.signals else None
+                    signals=quality_result.signals.to_dict() if quality_result.signals else None,
+                    enhancement_applied=enhancement_result.applied,
+                    enhancement_accepted=enhancement_result.accepted,
+                    enhancement_method=enhancement_result.method,
+                    enhancement_details=enhancement_result.to_dict()
                 ),
                 explainability=ExplainabilityInfo(
                     available=gradcam_available,
