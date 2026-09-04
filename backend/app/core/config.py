@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     MAX_BRIGHTNESS: float = 245.0
     MIN_CONTRAST: float = 12.0
     MIN_BLUR_SCORE: float = 8.0
+
+    # Phase 3 Deterministic Quality Assessment Service Settings
+    QUALITY_FOCUS_GOOD_MIN: float = 30.0
+    QUALITY_FOCUS_BORDERLINE_MIN: float = 10.0
+    QUALITY_CONTRAST_GOOD_MIN: float = 40.0
+    QUALITY_CONTRAST_BORDERLINE_MIN: float = 20.0
+    QUALITY_LUMINANCE_MIN_GOOD: float = 40.0
+    QUALITY_LUMINANCE_MAX_GOOD: float = 180.0
+    QUALITY_LUMINANCE_MIN_BORDERLINE: float = 25.0
+    QUALITY_LUMINANCE_MAX_BORDERLINE: float = 215.0
+    QUALITY_GLARE_MAX_GOOD: float = 0.03
+    QUALITY_GLARE_MAX_BORDERLINE: float = 0.08
+    QUALITY_FOV_MIN_GOOD: float = 0.40
+    QUALITY_FOV_MIN_BORDERLINE: float = 0.25
     
     # CORS
     FRONTEND_ORIGIN: str = "http://localhost:5173"

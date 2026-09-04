@@ -3,8 +3,16 @@ from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
 class QualityInfo(BaseModel):
-    status: str = Field(..., description="ACCEPT | LOW_QUALITY | INVALID")
+    status: str = Field(..., description="ACCEPT | LOW_QUALITY | INVALID | GOOD | BORDERLINE | UNGRADEABLE")
     reasons: List[str] = Field(default_factory=list, description="Validation failure or quality advisory reasons")
+    recapture_guidance: Optional[List[str]] = Field(default_factory=list, description="Actionable recapture guidance for degraded captures")
+    grade: Optional[str] = Field(None, description="GOOD | ACCEPTABLE | POOR")
+    score: Optional[float] = Field(None, description="Continuous aggregate quality score [0.0, 1.0]")
+    focus: Optional[Dict[str, Any]] = Field(None, description="Focus metric evaluation")
+    illumination: Optional[Dict[str, Any]] = Field(None, description="Illumination metric evaluation")
+    contrast_detail: Optional[Dict[str, Any]] = Field(None, description="Contrast dynamic range evaluation")
+    field_of_view: Optional[Dict[str, Any]] = Field(None, description="Field of view coverage evaluation")
+    glare: Optional[Dict[str, Any]] = Field(None, description="Glare and corneal reflection evaluation")
     width: Optional[int] = None
     height: Optional[int] = None
     brightness: Optional[float] = None

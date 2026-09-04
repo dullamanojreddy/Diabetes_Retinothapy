@@ -12,7 +12,9 @@ from app.ml.preprocessing import preprocess_fundus
 from app.ml.inference import run_inference
 from app.ml.gradcam import GradCAM
 from app.ml.explainability import generate_explanation
+import numpy as np
 from app.services.history_service import history_service
+from app.services.quality_service import quality_service
 from app.utils.file_utils import generate_unique_id, cleanup_file, sanitize_filename
 from app.utils.image_utils import load_image_bytes, assess_fundus_and_quality, save_numpy_image
 from app.schemas.prediction import (
@@ -144,15 +146,31 @@ class PredictionService:
                 })
                 return 422, rejection
 
-            # If rejected as low quality (e.g. excessively blurry, dark)
-            if quality_result.status == "LOW_QUALITY":
-                logger.info(f"Low quality fundus rejected: {quality_result.reasons}")
+            # 4. Phase 3 Complete Image-Quality Assessment
+            img_np = np.array(pil_image)
+            quality_assessment = quality_service.assess(
+                img_np,
+                fov_gate_score=quality_result.signals.fov_score if quality_result.signals else 1.0
+            )
+
+            # If rejected as low quality or ungradeable
+            if quality_result.status == "LOW_QUALITY" or quality_assessment.status == "UNGRADEABLE":
+                combined_reasons = list(dict.fromkeys(quality_result.reasons + quality_assessment.reasons))
+                logger.info(f"Low quality or ungradeable fundus rejected: {combined_reasons}")
                 rejection = {
                     "screening_id": screening_id,
                     "status": "LOW_QUALITY",
                     "quality": {
                         "status": "LOW_QUALITY",
-                        "reasons": quality_result.reasons,
+                        "grade": quality_assessment.grade,
+                        "score": quality_assessment.score,
+                        "reasons": combined_reasons,
+                        "recapture_guidance": quality_assessment.recapture_guidance,
+                        "focus": quality_assessment.focus.to_dict(),
+                        "illumination": quality_assessment.illumination.to_dict(),
+                        "contrast_detail": quality_assessment.contrast.to_dict(),
+                        "field_of_view": quality_assessment.field_of_view.to_dict(),
+                        "glare": quality_assessment.glare.to_dict(),
                         "width": quality_result.width,
                         "height": quality_result.height,
                         "brightness": quality_result.brightness,
@@ -286,7 +304,15 @@ class PredictionService:
                 ),
                 quality=QualityInfo(
                     status="ACCEPT",
-                    reasons=[],
+                    grade=quality_assessment.grade,
+                    score=quality_assessment.score,
+                    reasons=quality_assessment.reasons,
+                    recapture_guidance=quality_assessment.recapture_guidance,
+                    focus=quality_assessment.focus.to_dict(),
+                    illumination=quality_assessment.illumination.to_dict(),
+                    contrast_detail=quality_assessment.contrast.to_dict(),
+                    field_of_view=quality_assessment.field_of_view.to_dict(),
+                    glare=quality_assessment.glare.to_dict(),
                     width=quality_result.width,
                     height=quality_result.height,
                     brightness=quality_result.brightness,
