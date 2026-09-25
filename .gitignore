@@ -39,6 +39,9 @@ backend/.env
 frontend/.env
 *.local
 
+# Large dataset archives (exceeds GitHub 100MB limit)
+APTOS_TEST_LABELED.zip
+
 # IDE & OS files
 .vscode/
 .idea/
